@@ -73,7 +73,7 @@
     </record>
 
     <!-- ============================================ -->
-    <!-- VISTA LISTA - Logs de Autenticación -->
+    <!-- VISTA ÁRBOL - Logs de Autenticación -->
     <!-- ============================================ -->
     
     <record id="view_biometric_auth_log_tree" model="ir.ui.view">
@@ -92,7 +92,7 @@
                 <field name="device_platform" widget="badge"/>
                 <field name="auth_type" widget="badge"/>
                 <field name="success" widget="boolean"/>
-                <field name="error_code" column_invisible="parent.success"/>
+                <field name="error_code" optional="hide"/>
                 <field name="duration_ms" string="Duración (ms)" optional="hide"/>
                 <field name="ip_address" optional="hide"/>
             </list>
@@ -102,8 +102,7 @@
     <!-- ============================================ -->
     <!-- VISTA BÚSQUEDA - Logs de Autenticación -->
     <!-- ============================================ -->
-    
-    <record id="view_biometric_auth_log_search" model="ir.ui.view">
+    <!-- <record id="view_biometric_auth_log_search" model="ir.ui.view">
         <field name="name">biometric.auth.log.search</field>
         <field name="model">biometric.auth.log</field>
         <field name="arch" type="xml">
@@ -120,7 +119,7 @@
                 
                 <filter string="Exitosas" 
                         name="successful"
-                        domain="[('success', '=', True)]"/>
+                        domain="[('success', '!=', False)]"/>
                 
                 <filter string="Fallidas" 
                         name="failed"
@@ -130,15 +129,7 @@
                 
                 <filter string="Hoy" 
                         name="today"
-                        domain="[('auth_date', '&gt;=', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
-                
-                <filter string="Esta Semana" 
-                        name="this_week"
-                        domain="[('auth_date', '&gt;=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
-                
-                <filter string="Este Mes" 
-                        name="this_month"
-                        domain="[('auth_date', '&gt;=', (context_today().replace(day=1)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('auth_date', '&gt;=', context_today())]"/>
                 
                 <separator/>
                 
@@ -157,11 +148,11 @@
                             context="{'group_by': 'auth_type'}"/>
                     <filter string="Fecha" 
                             name="group_date"
-                            context="{'group_by': 'auth_date:day'}"/>
+                            context="{'group_by': 'auth_date'}"/>
                 </group>
             </search>
         </field>
-    </record>
+    </record> -->
 
     <!-- ============================================ -->
     <!-- VISTA GRÁFICA - Estadísticas -->

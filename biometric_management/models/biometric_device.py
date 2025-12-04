@@ -190,19 +190,22 @@ class BiometricDevice(models.Model):
     days_since_last_use = fields.Integer(
         string='Días Sin Uso',
         compute='_compute_days_since_last_use',
-        help='Días desde el último uso'
+        help='Días desde el último uso',
+        store=True
     )
     
     is_recently_used = fields.Boolean(
         string='Usado Recientemente',
         compute='_compute_is_recently_used',
-        help='Usado en las últimas 24 horas'
+        help='Usado en las últimas 24 horas',
+        store=True
     )
     
     is_stale = fields.Boolean(
         string='Inactivo (>30 días)',
         compute='_compute_is_stale',
-        help='Más de 30 días sin usar'
+        help='Más de 30 días sin usar',
+        store=True
     )
     
     # ============================================

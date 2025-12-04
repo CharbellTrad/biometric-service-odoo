@@ -135,17 +135,13 @@
                         </page>
                     </notebook>
                 </sheet>
-                
-                <div class="oe_chatter">
-                    <field name="message_follower_ids"/>
-                    <field name="message_ids"/>
-                </div>
+                <chatter/>
             </form>
         </field>
     </record>
 
     <!-- ============================================ -->
-    <!-- VISTA LISTA - Dispositivos Biométricos -->
+    <!-- VISTA ÁRBOL - Dispositivos Biométricos -->
     <!-- ============================================ -->
     
     <record id="view_biometric_device_tree" model="ir.ui.view">
@@ -180,7 +176,7 @@
     <!-- VISTA KANBAN - Dispositivos Biométricos -->
     <!-- ============================================ -->
     
-    <record id="view_biometric_device_kanban" model="ir.ui.view">
+    <!-- <record id="view_biometric_device_kanban" model="ir.ui.view">
         <field name="name">biometric.device.kanban</field>
         <field name="model">biometric.device</field>
         <field name="arch" type="xml">
@@ -197,7 +193,7 @@
                 <field name="last_used_at"/>
                 
                 <templates>
-                    <t t-name="card">
+                    <t t-name="kanban-box">
                         <div class="oe_kanban_global_click">
                             <div class="o_kanban_image">
                                 <t t-if="record.platform.raw_value == 'ios'">
@@ -224,10 +220,10 @@
                                     <field name="biometric_type_display" widget="badge"/>
                                     
                                     <t t-if="record.is_recently_used.raw_value">
-                                        <span class="badge badge-success">Activo</span>
+                                        <span class="badge text-bg-success">Activo</span>
                                     </t>
                                     <t t-if="record.is_stale.raw_value">
-                                        <span class="badge badge-warning">Inactivo</span>
+                                        <span class="badge text-bg-warning">Inactivo</span>
                                     </t>
                                 </div>
                                 
@@ -240,8 +236,10 @@
                                     </div>
                                     
                                     <div class="oe_kanban_bottom_right">
-                                        <field name="state" widget="label_selection" 
-                                               options="{'classes': {'active': 'success', 'inactive': 'warning', 'revoked': 'danger'}}"/>
+                                        <field name="state" widget="badge" 
+                                               decoration-success="state == 'active'"
+                                               decoration-warning="state == 'inactive'"
+                                               decoration-danger="state == 'revoked'"/>
                                     </div>
                                 </div>
                             </div>
@@ -250,13 +248,13 @@
                 </templates>
             </kanban>
         </field>
-    </record>
+    </record> -->
 
     <!-- ============================================ -->
     <!-- VISTA BÚSQUEDA - Dispositivos Biométricos -->
     <!-- ============================================ -->
     
-    <record id="view_biometric_device_search" model="ir.ui.view">
+    <!-- <record id="view_biometric_device_search" model="ir.ui.view">
         <field name="name">biometric.device.search</field>
         <field name="model">biometric.device</field>
         <field name="arch" type="xml">
@@ -290,11 +288,11 @@
                 
                 <filter string="Usados Recientemente" 
                         name="recently_used"
-                        domain="[('is_recently_used', '=', True)]"/>
+                        domain="[('is_recently_used', '!=', False)]"/>
                 
                 <filter string="Sin Uso (&gt;30 días)" 
                         name="stale_devices"
-                        domain="[('is_stale', '=', True)]"/>
+                        domain="[('is_stale', '!=', False)]"/>
                 
                 <separator/>
                 
@@ -324,7 +322,7 @@
                 </group>
             </search>
         </field>
-    </record>
+    </record> -->
 
     <!-- ============================================ -->
     <!-- ACCIÓN - Dispositivos Biométricos -->

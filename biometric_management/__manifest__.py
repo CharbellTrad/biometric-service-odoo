@@ -22,7 +22,7 @@
         - Estados: activo, inactivo, revocado
         - Historial de autenticaciones
     """,
-    'depends': ['base', 'hr'],
+    'depends': ['base', 'hr', 'mail'],
     'data': [
         # 1. Seguridad primero
         'security/biometric_security.xml',
