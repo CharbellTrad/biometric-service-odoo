@@ -22,15 +22,18 @@
         - Estados: activo, inactivo, revocado
         - Historial de autenticaciones
     """,
-    'author': 'Tu Nombre/Empresa',
-    'website': 'https://tuempresa.com',
     'depends': ['base', 'hr'],
     'data': [
+        # 1. Seguridad primero
         'security/biometric_security.xml',
         'security/ir.model.access.csv',
-        'views/biometric_device_views.xml',
+        # 2. Vistas de logs (contiene action_biometric_auth_log_by_device)
         'views/biometric_auth_log_views.xml',
+        # 3. Vistas de dispositivos (usa action_biometric_auth_log_by_device)
+        'views/biometric_device_views.xml',
+        # 4. Menús al final
         'views/biometric_menu.xml',
+        # 5. Datos por defecto
         'data/biometric_data.xml',
     ],
     'demo': [],
