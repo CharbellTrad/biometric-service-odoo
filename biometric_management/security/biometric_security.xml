@@ -1,38 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- ============================================ -->
-    <!-- CATEGORÍA DE SEGURIDAD -->
-    <!-- ============================================ -->
-    
-    <record id="module_category_biometric" model="ir.module.category">
-        <field name="name">Dispositivos Biométricos</field>
-        <field name="description">Gestión de autenticación biométrica</field>
-        <field name="sequence">50</field>
-    </record>
-
-    <!-- ============================================ -->
     <!-- GRUPOS DE ACCESO -->
     <!-- ============================================ -->
     
     <!-- Usuario: Puede ver y gestionar solo sus propios dispositivos -->
     <record id="group_biometric_user" model="res.groups">
-        <field name="name">Usuario Biométrico</field>
-        <field name="category_id" ref="module_category_biometric"/>
+        <field name="name">Biometric Management / Usuario</field>
         <field name="comment">Puede gestionar sus propios dispositivos biométricos</field>
     </record>
     
     <!-- Manager: Puede ver todos los dispositivos y gestionar los suyos -->
     <record id="group_biometric_manager" model="res.groups">
-        <field name="name">Manager Biométrico</field>
-        <field name="category_id" ref="module_category_biometric"/>
+        <field name="name">Biometric Management / Manager</field>
         <field name="implied_ids" eval="[(4, ref('group_biometric_user'))]"/>
         <field name="comment">Puede ver todos los dispositivos y logs de autenticación</field>
     </record>
     
     <!-- Admin: Control total -->
     <record id="group_biometric_admin" model="res.groups">
-        <field name="name">Administrador Biométrico</field>
-        <field name="category_id" ref="module_category_biometric"/>
+        <field name="name">Biometric Management / Administrador</field>
         <field name="implied_ids" eval="[(4, ref('group_biometric_manager'))]"/>
         <field name="comment">Control total sobre dispositivos y logs biométricos</field>
     </record>
