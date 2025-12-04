@@ -471,25 +471,39 @@ class BiometricDevice(models.Model):
         return [device._format_device_data() for device in devices]
     
     def _format_device_data(self):
-        """Formatea los datos del dispositivo para la API"""
+        """Formatea los datos del dispositivo para la API - Compatible con Frontend"""
         self.ensure_one()
         
+        # Determinar si es el dispositivo actual (comparando device_id del contexto)
+        current_device_id = self.env.context.get('current_device_id')
+        is_current = (current_device_id == self.device_id) if current_device_id else False
+        
         return {
+            # Campos básicos
             'id': self.id,
-            'device_id': self.device_id,
-            'device_name': self.device_name,
+            'deviceId': self.device_id,  # ← Frontend usa camelCase
+            'deviceName': self.device_name,
             'platform': self.platform,
-            'os_version': self.os_version,
-            'model_name': self.model_name,
+            'osVersion': self.os_version,
+            'modelName': self.model_name,
             'brand': self.brand,
-            'biometric_type': self.biometric_type,
-            'biometric_type_display': self.biometric_type_display,
+            'isPhysicalDevice': self.is_physical_device,
+            
+            # Biometría
+            'biometricType': self.biometric_type_display or self.biometric_type,
+            
+            # Estado
             'state': self.state,
-            'is_enabled': self.is_enabled,
-            'enrolled_at': self.enrolled_at.isoformat() if self.enrolled_at else None,
-            'last_used_at': self.last_used_at.isoformat() if self.last_used_at else None,
-            'auth_count': self.auth_count,
-            'is_recently_used': self.is_recently_used,
-            'is_stale': self.is_stale,
-            'days_since_last_use': self.days_since_last_use,
+            'isEnabled': self.is_enabled,
+            'isCurrentDevice': is_current,  # ← Nuevo campo requerido
+            
+            # Fechas (ISO 8601)
+            'enrolledAt': self.enrolled_at.isoformat() if self.enrolled_at else None,
+            'lastUsedAt': self.last_used_at.isoformat() if self.last_used_at else None,
+            
+            # Estadísticas
+            'authCount': self.auth_count,
+            'isRecentlyUsed': self.is_recently_used,
+            'isStale': self.is_stale,
+            'daysSinceLastUse': self.days_since_last_use,
         }

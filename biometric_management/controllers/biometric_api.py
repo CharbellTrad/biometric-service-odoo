@@ -113,11 +113,14 @@ class BiometricAPIController(http.Controller):
                 auth='user', 
                 methods=['GET'], 
                 csrf=False)
-    def get_devices(self, **kwargs):
+    def get_devices(self, current_device_id=None, **kwargs):
         """
         Obtiene todos los dispositivos del usuario actual
         
-        GET /api/biometric/devices
+        GET /api/biometric/devices?current_device_id=abc123
+        
+        Args:
+            current_device_id (str): ID del dispositivo desde donde se hace la petición
         
         Returns: {
             "success": true,
@@ -127,7 +130,21 @@ class BiometricAPIController(http.Controller):
         """
         try:
             BiometricDevice = request.env['biometric.device']
-            devices = BiometricDevice.get_user_devices()
+            
+            # Buscar dispositivos del usuario
+            devices_records = BiometricDevice.search([
+                ('user_id', '=', request.env.user.id),
+                ('state', '!=', 'revoked')
+            ], order='last_used_at desc, enrolled_at desc')
+            
+            # Formatear con contexto del dispositivo actual
+            devices = []
+            for device in devices_records:
+                # Pasar current_device_id al contexto
+                device_data = device.with_context(
+                    current_device_id=current_device_id
+                )._format_device_data()
+                devices.append(device_data)
 
             return {
                 'success': True,
