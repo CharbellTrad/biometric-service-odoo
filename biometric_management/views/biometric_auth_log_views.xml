@@ -73,14 +73,14 @@
     </record>
 
     <!-- ============================================ -->
-    <!-- VISTA ÁRBOL - Logs de Autenticación -->
+    <!-- VISTA LISTA - Logs de Autenticación -->
     <!-- ============================================ -->
     
     <record id="view_biometric_auth_log_tree" model="ir.ui.view">
         <field name="name">biometric.auth.log.tree</field>
         <field name="model">biometric.auth.log</field>
         <field name="arch" type="xml">
-            <tree string="Historial de Autenticaciones" 
+            <list string="Historial de Autenticaciones" 
                   create="false" 
                   edit="false"
                   decoration-success="success == True"
@@ -95,7 +95,7 @@
                 <field name="error_code" column_invisible="parent.success"/>
                 <field name="duration_ms" string="Duración (ms)" optional="hide"/>
                 <field name="ip_address" optional="hide"/>
-            </tree>
+            </list>
         </field>
     </record>
 
@@ -201,7 +201,7 @@
     <record id="action_biometric_auth_log" model="ir.actions.act_window">
         <field name="name">Historial de Autenticaciones</field>
         <field name="res_model">biometric.auth.log</field>
-        <field name="view_mode">tree,form,graph,pivot</field>
+        <field name="view_mode">list,form,graph,pivot</field>
         <field name="context">{'search_default_my_auths': 1, 'search_default_this_week': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_empty_folder">
@@ -221,7 +221,7 @@
     <record id="action_biometric_auth_log_by_device" model="ir.actions.act_window">
         <field name="name">Autenticaciones del Dispositivo</field>
         <field name="res_model">biometric.auth.log</field>
-        <field name="view_mode">tree,form,graph</field>
+        <field name="view_mode">list,form,graph</field>
         <field name="domain">[('device_id', '=', active_id)]</field>
         <field name="context">{'default_device_id': active_id}</field>
     </record>
