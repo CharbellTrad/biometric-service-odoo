@@ -234,15 +234,17 @@ class BiometricDevice(models.Model):
             else:
                 record.employee_id = False
     
-    @api.depends('last_used_at')
+    @api.depends('last_used_at', 'enrolled_at')
     def _compute_days_since_last_use(self):
-        """Calcula días desde el último uso"""
+        """Calcula días desde el último uso (usa enrolled_at si no hay último uso)"""
         for record in self:
-            if record.last_used_at:
-                delta = fields.Datetime.now() - record.last_used_at
-                record.days_since_last_use = delta.days
+            # Usar last_used_at, o enrolled_at como fallback
+            reference_date = record.last_used_at or record.enrolled_at
+            if reference_date:
+                delta = fields.Datetime.now() - reference_date
+                record.days_since_last_use = max(0, delta.days)  # Nunca negativo
             else:
-                record.days_since_last_use = -1
+                record.days_since_last_use = 0
     
     @api.depends('last_used_at')
     def _compute_is_recently_used(self):
@@ -481,6 +483,67 @@ class BiometricDevice(models.Model):
         
         # Pasar current_device_id al contexto para identificar dispositivo actual
         return [device.with_context(current_device_id=current_device_id)._format_device_data() for device in devices]
+    
+    @api.model
+    def validate_device(self, device_id=None, **kwargs):
+        """
+        Valida que un dispositivo esté activo y habilitado para autenticación biométrica.
+        Usado por la app móvil para verificar si el dispositivo sigue autorizado.
+        
+        Args:
+            device_id (str): ID único del dispositivo (generado por la app)
+            **kwargs: Argumentos adicionales desde JSON-RPC
+            
+        Returns:
+            dict: {'valid': bool, 'device_odoo_id': int|None, 'message': str}
+        """
+        # Obtener device_id desde kwargs si no se pasó directamente
+        if device_id is None:
+            device_id = kwargs.get('device_id')
+        
+        if not device_id:
+            return {
+                'valid': False,
+                'device_odoo_id': None,
+                'message': 'device_id es requerido'
+            }
+        
+        # Buscar dispositivo activo del usuario actual
+        device = self.search([
+            ('user_id', '=', self.env.user.id),
+            ('device_id', '=', device_id),
+            ('state', '=', 'active'),
+            ('is_enabled', '=', True)
+        ], limit=1)
+        
+        if device:
+            _logger.info(f'Dispositivo validado: {device.device_name} para {self.env.user.name}')
+            return {
+                'valid': True,
+                'device_odoo_id': device.id,
+                'message': 'Dispositivo válido'
+            }
+        else:
+            # Verificar si existe pero está revocado/inactivo
+            inactive_device = self.search([
+                ('user_id', '=', self.env.user.id),
+                ('device_id', '=', device_id)
+            ], limit=1)
+            
+            if inactive_device:
+                _logger.warning(f'Dispositivo no válido (estado: {inactive_device.state}): {inactive_device.device_name}')
+                return {
+                    'valid': False,
+                    'device_odoo_id': inactive_device.id,
+                    'message': f'Dispositivo {inactive_device.state}. Acceso denegado.'
+                }
+            else:
+                _logger.warning(f'Dispositivo no encontrado: {device_id}')
+                return {
+                    'valid': False,
+                    'device_odoo_id': None,
+                    'message': 'Dispositivo no registrado'
+                }
     
     def _format_device_data(self):
         """Formatea los datos del dispositivo para la API - Compatible con Frontend"""

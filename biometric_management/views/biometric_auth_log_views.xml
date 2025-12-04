@@ -10,6 +10,15 @@
         <field name="arch" type="xml">
             <form string="Log de Autenticación" create="false" edit="false" delete="false">
                 <sheet>
+                    <!-- Ribbon de estado -->
+                    <widget name="web_ribbon" title="✓ Exitoso" 
+                            bg_color="bg-success"
+                            invisible="not success"/>
+                    
+                    <widget name="web_ribbon" title="✗ Fallido" 
+                            bg_color="bg-danger"
+                            invisible="success"/>
+                    
                     <div class="oe_button_box" name="button_box">
                         <button class="oe_stat_button" 
                                 icon="fa-check-circle" 
@@ -28,44 +37,72 @@
                                 <span class="o_stat_text text-danger">Fallido</span>
                             </div>
                         </button>
+                        
+                        <button class="oe_stat_button" 
+                                icon="fa-clock-o" 
+                                type="object">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value">
+                                    <field name="duration_ms"/>
+                                </span>
+                                <span class="o_stat_text">ms</span>
+                            </div>
+                        </button>
+                    </div>
+                    
+                    <div class="oe_title">
+                        <h1>
+                            <span class="me-2">
+                                <i class="fa fa-fingerprint"/>
+                            </span>
+                            Autenticación <field name="auth_date" readonly="1" widget="datetime"/>
+                        </h1>
+                        <h3>
+                            <field name="user_id" readonly="1"/>
+                        </h3>
                     </div>
                     
                     <group>
-                        <group string="Información General">
+                        <group string="👤 Usuario y Dispositivo">
                             <field name="user_id" readonly="1"/>
                             <field name="device_id" readonly="1"/>
-                            <field name="auth_date" readonly="1"/>
-                            <field name="success" widget="boolean" readonly="1"/>
-                            <field name="auth_type" widget="badge" readonly="1"/>
+                            <field name="device_name" readonly="1"/>
+                            <field name="device_platform" widget="badge" readonly="1"
+                                   decoration-info="device_platform == 'ios'"
+                                   decoration-success="device_platform == 'android'"
+                                   decoration-warning="device_platform == 'web'"/>
                         </group>
                         
-                        <group string="Dispositivo">
-                            <field name="device_name" readonly="1"/>
-                            <field name="device_platform" widget="badge" readonly="1"/>
+                        <group string="🔐 Autenticación">
+                            <field name="auth_date" readonly="1" widget="datetime"/>
+                            <field name="auth_type" widget="badge" readonly="1"
+                                   decoration-info="auth_type == 'facial_recognition'"
+                                   decoration-success="auth_type == 'fingerprint'"/>
+                            <field name="success" widget="boolean_toggle" readonly="1"/>
                         </group>
                     </group>
                     
                     <group invisible="success">
-                        <group string="Información de Error">
+                        <group string="❌ Información de Error" colspan="2">
                             <field name="error_code" readonly="1"/>
                             <field name="error_message" readonly="1"/>
                         </group>
                     </group>
                     
                     <group>
-                        <group string="Información Técnica">
-                            <field name="session_id" readonly="1"/>
+                        <group string="🌐 Información de Red">
                             <field name="ip_address" readonly="1"/>
-                            <field name="duration_ms" readonly="1" widget="integer"/>
+                            <field name="session_id" readonly="1"/>
                         </group>
                         
-                        <group string="Detalles Adicionales">
+                        <group string="📊 Rendimiento">
+                            <field name="duration_ms" readonly="1" widget="integer"/>
                             <field name="user_agent" readonly="1"/>
                         </group>
                     </group>
                     
-                    <group string="Notas" invisible="not notes">
-                        <field name="notes" readonly="1" nolabel="1"/>
+                    <group string="📝 Notas" invisible="not notes">
+                        <field name="notes" readonly="1" nolabel="1" colspan="2"/>
                     </group>
                 </sheet>
             </form>
@@ -84,52 +121,165 @@
                   create="false" 
                   edit="false"
                   decoration-success="success == True"
-                  decoration-danger="success == False">
+                  decoration-danger="success == False"
+                  default_order="auth_date desc">
                 
-                <field name="auth_date"/>
+                <field name="auth_date" string="Fecha" widget="datetime"/>
+                <field name="user_id" string="Usuario"/>
+                <field name="device_name" string="Dispositivo"/>
+                <field name="device_platform" widget="badge" string="Plataforma"
+                       decoration-info="device_platform == 'ios'"
+                       decoration-success="device_platform == 'android'"
+                       decoration-warning="device_platform == 'web'"/>
+                <field name="auth_type" widget="badge" string="Tipo"
+                       decoration-info="auth_type == 'facial_recognition'"
+                       decoration-success="auth_type == 'fingerprint'"/>
+                <field name="success" widget="boolean" string="Éxito"/>
+                <field name="duration_ms" string="Duración (ms)" 
+                       decoration-success="duration_ms &lt; 1000"
+                       decoration-warning="duration_ms &gt;= 1000 and duration_ms &lt; 3000"
+                       decoration-danger="duration_ms &gt;= 3000"/>
+                <field name="error_code" optional="hide" string="Código Error"/>
+                <field name="ip_address" optional="hide" string="IP"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ============================================ -->
+    <!-- VISTA KANBAN - Logs de Autenticación -->
+    <!-- ============================================ -->
+    
+    <record id="view_biometric_auth_log_kanban" model="ir.ui.view">
+        <field name="name">biometric.auth.log.kanban</field>
+        <field name="model">biometric.auth.log</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_mobile" quick_create="false" create="false">
+                <field name="id"/>
                 <field name="user_id"/>
                 <field name="device_name"/>
-                <field name="device_platform" widget="badge"/>
-                <field name="auth_type" widget="badge"/>
-                <field name="success" widget="boolean"/>
-                <field name="error_code" optional="hide"/>
-                <field name="duration_ms" string="Duración (ms)" optional="hide"/>
-                <field name="ip_address" optional="hide"/>
-            </list>
+                <field name="device_platform"/>
+                <field name="auth_type"/>
+                <field name="auth_date"/>
+                <field name="success"/>
+                <field name="duration_ms"/>
+                <field name="error_code"/>
+                
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click">
+                            <div class="o_kanban_record_top mb-2">
+                                <div class="o_kanban_record_headings">
+                                    <strong class="o_kanban_record_title">
+                                        <t t-if="record.device_platform.raw_value == 'ios'">
+                                            <i class="fa fa-apple me-1"/>
+                                        </t>
+                                        <t t-if="record.device_platform.raw_value == 'android'">
+                                            <i class="fa fa-android me-1"/>
+                                        </t>
+                                        <t t-if="record.device_platform.raw_value == 'web'">
+                                            <i class="fa fa-globe me-1"/>
+                                        </t>
+                                        <field name="device_name"/>
+                                    </strong>
+                                </div>
+                                <t t-if="record.success.raw_value">
+                                    <span class="badge text-bg-success">
+                                        <i class="fa fa-check me-1"/>Exitoso
+                                    </span>
+                                </t>
+                                <t t-else="">
+                                    <span class="badge text-bg-danger">
+                                        <i class="fa fa-times me-1"/>Fallido
+                                    </span>
+                                </t>
+                            </div>
+                            
+                            <div class="o_kanban_record_body">
+                                <div class="mb-1">
+                                    <i class="fa fa-user me-1"/>
+                                    <field name="user_id"/>
+                                </div>
+                                <div class="mb-1 text-muted">
+                                    <i class="fa fa-calendar me-1"/>
+                                    <field name="auth_date" widget="datetime"/>
+                                </div>
+                            </div>
+                            
+                            <div class="o_kanban_record_bottom mt-2">
+                                <div class="oe_kanban_bottom_left">
+                                    <field name="auth_type" widget="badge"/>
+                                </div>
+                                <div class="oe_kanban_bottom_right text-muted">
+                                    <i class="fa fa-clock-o me-1"/>
+                                    <t t-esc="record.duration_ms.value"/>ms
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
         </field>
     </record>
 
     <!-- ============================================ -->
     <!-- VISTA BÚSQUEDA - Logs de Autenticación -->
     <!-- ============================================ -->
-    <!-- <record id="view_biometric_auth_log_search" model="ir.ui.view">
+    
+    <record id="view_biometric_auth_log_search" model="ir.ui.view">
         <field name="name">biometric.auth.log.search</field>
         <field name="model">biometric.auth.log</field>
         <field name="arch" type="xml">
             <search string="Buscar Autenticaciones">
-                <field name="user_id"/>
-                <field name="device_id"/>
-                <field name="device_name"/>
+                <field name="user_id" string="Usuario"/>
+                <field name="device_id" string="Dispositivo"/>
+                <field name="device_name" string="Nombre Dispositivo"/>
+                <field name="error_code" string="Código Error"/>
                 
                 <separator/>
                 
                 <filter string="Mis Autenticaciones" 
                         name="my_auths"
-                        domain="[('user_id', '=', uid)]"/>
+                        domain="[('user_id', '=', uid)]"
+                        icon="fa-user"/>
                 
                 <filter string="Exitosas" 
                         name="successful"
-                        domain="[('success', '!=', False)]"/>
+                        domain="[('success', '!=', False)]"
+                        icon="fa-check"/>
                 
                 <filter string="Fallidas" 
                         name="failed"
-                        domain="[('success', '=', False)]"/>
+                        domain="[('success', '=', False)]"
+                        icon="fa-times"/>
                 
                 <separator/>
                 
                 <filter string="Hoy" 
                         name="today"
-                        domain="[('auth_date', '&gt;=', context_today())]"/>
+                        domain="[('auth_date', '&gt;=', context_today().strftime('%Y-%m-%d'))]"
+                        icon="fa-calendar"/>
+                
+                <filter string="Esta Semana" 
+                        name="this_week"
+                        domain="[('auth_date', '&gt;=', (context_today() - relativedelta(days=7)).strftime('%Y-%m-%d'))]"
+                        icon="fa-calendar-week"/>
+                
+                <filter string="Este Mes" 
+                        name="this_month"
+                        domain="[('auth_date', '&gt;=', context_today().strftime('%Y-%m-01'))]"
+                        icon="fa-calendar-alt"/>
+                
+                <separator/>
+                
+                <filter string="iOS" 
+                        name="ios"
+                        domain="[('device_platform', '=', 'ios')]"
+                        icon="fa-apple"/>
+                
+                <filter string="Android" 
+                        name="android"
+                        domain="[('device_platform', '=', 'android')]"
+                        icon="fa-android"/>
                 
                 <separator/>
                 
@@ -148,11 +298,14 @@
                             context="{'group_by': 'auth_type'}"/>
                     <filter string="Fecha" 
                             name="group_date"
-                            context="{'group_by': 'auth_date'}"/>
+                            context="{'group_by': 'auth_date:day'}"/>
+                    <filter string="Plataforma" 
+                            name="group_platform"
+                            context="{'group_by': 'device_platform'}"/>
                 </group>
             </search>
         </field>
-    </record> -->
+    </record>
 
     <!-- ============================================ -->
     <!-- VISTA GRÁFICA - Estadísticas -->
@@ -192,10 +345,10 @@
     <record id="action_biometric_auth_log" model="ir.actions.act_window">
         <field name="name">Historial de Autenticaciones</field>
         <field name="res_model">biometric.auth.log</field>
-        <field name="view_mode">list,form,graph,pivot</field>
+        <field name="view_mode">list,kanban,form,graph,pivot</field>
         <field name="context">{'search_default_my_auths': 1, 'search_default_this_week': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_empty_folder">
+            <p class="o_view_nocontent_smiling_face">
                 No hay autenticaciones registradas
             </p>
             <p>
@@ -212,7 +365,7 @@
     <record id="action_biometric_auth_log_by_device" model="ir.actions.act_window">
         <field name="name">Autenticaciones del Dispositivo</field>
         <field name="res_model">biometric.auth.log</field>
-        <field name="view_mode">list,form,graph</field>
+        <field name="view_mode">list,kanban,form,graph</field>
         <field name="domain">[('device_id', '=', active_id)]</field>
         <field name="context">{'default_device_id': active_id}</field>
     </record>
