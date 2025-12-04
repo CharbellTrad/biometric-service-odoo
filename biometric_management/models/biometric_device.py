@@ -399,17 +399,22 @@ class BiometricDevice(models.Model):
     # ============================================
     
     @api.model
-    def register_device(self, device_data):
+    def register_device(self, device_data=None, **kwargs):
         """
         Registra un nuevo dispositivo biométrico
         
         Args:
-            device_data (dict): Información del dispositivo
+            device_data (dict): Información del dispositivo (puede venir via args o kwargs)
+            **kwargs: Datos del dispositivo cuando se llama via JSON-RPC
             
         Returns:
             dict: Información del dispositivo creado
         """
         try:
+            # Si device_data es None, usar kwargs directamente (JSON-RPC call)
+            if device_data is None:
+                device_data = kwargs
+            
             # Validar datos requeridos
             required_fields = ['device_id', 'device_name', 'platform', 'biometric_type']
             for field in required_fields:
@@ -450,25 +455,32 @@ class BiometricDevice(models.Model):
             raise UserError(f'Error al registrar dispositivo: {str(e)}')
     
     @api.model
-    def get_user_devices(self, user_id=None):
+    def get_user_devices(self, user_id=None, current_device_id=None, **kwargs):
         """
         Obtiene todos los dispositivos de un usuario
         
         Args:
             user_id (int): ID del usuario (None = usuario actual)
+            current_device_id (str): ID del dispositivo actual para marcarlo
+            **kwargs: Argumentos adicionales desde JSON-RPC
             
         Returns:
             list: Lista de dispositivos formateados
         """
+        # Obtener current_device_id desde kwargs si no se pasó directamente
+        if current_device_id is None:
+            current_device_id = kwargs.get('current_device_id')
+        
         if user_id is None:
-            user_id = self.env.user.id
+            user_id = kwargs.get('user_id') or self.env.user.id
         
         devices = self.search([
             ('user_id', '=', user_id),
             ('state', '!=', 'revoked')
         ], order='last_used_at desc, enrolled_at desc')
         
-        return [device._format_device_data() for device in devices]
+        # Pasar current_device_id al contexto para identificar dispositivo actual
+        return [device.with_context(current_device_id=current_device_id)._format_device_data() for device in devices]
     
     def _format_device_data(self):
         """Formatea los datos del dispositivo para la API - Compatible con Frontend"""
