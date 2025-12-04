@@ -11,11 +11,11 @@
             <form string="Log de Autenticación" create="false" edit="false" delete="false">
                 <sheet>
                     <!-- Ribbon de estado -->
-                    <widget name="web_ribbon" title="✓ Exitoso" 
+                    <widget name="web_ribbon" title="Exitoso" 
                             bg_color="bg-success"
                             invisible="not success"/>
                     
-                    <widget name="web_ribbon" title="✗ Fallido" 
+                    <widget name="web_ribbon" title="Fallido" 
                             bg_color="bg-danger"
                             invisible="success"/>
                     
@@ -52,10 +52,7 @@
                     
                     <div class="oe_title">
                         <h1>
-                            <span class="me-2">
-                                <i class="fa fa-fingerprint"/>
-                            </span>
-                            Autenticación <field name="auth_date" readonly="1" widget="datetime"/>
+                            Autenticación Biométrica
                         </h1>
                         <h3>
                             <field name="user_id" readonly="1"/>
@@ -63,45 +60,40 @@
                     </div>
                     
                     <group>
-                        <group string="👤 Usuario y Dispositivo">
+                        <group string="Usuario y Dispositivo">
                             <field name="user_id" readonly="1"/>
                             <field name="device_id" readonly="1"/>
                             <field name="device_name" readonly="1"/>
-                            <field name="device_platform" widget="badge" readonly="1"
-                                   decoration-info="device_platform == 'ios'"
-                                   decoration-success="device_platform == 'android'"
-                                   decoration-warning="device_platform == 'web'"/>
+                            <field name="device_platform" widget="badge" readonly="1"/>
                         </group>
                         
-                        <group string="🔐 Autenticación">
+                        <group string="Autenticación">
                             <field name="auth_date" readonly="1" widget="datetime"/>
-                            <field name="auth_type" widget="badge" readonly="1"
-                                   decoration-info="auth_type == 'facial_recognition'"
-                                   decoration-success="auth_type == 'fingerprint'"/>
+                            <field name="auth_type" widget="badge" readonly="1"/>
                             <field name="success" widget="boolean_toggle" readonly="1"/>
                         </group>
                     </group>
                     
                     <group invisible="success">
-                        <group string="❌ Información de Error" colspan="2">
+                        <group string="Información de Error" colspan="2">
                             <field name="error_code" readonly="1"/>
                             <field name="error_message" readonly="1"/>
                         </group>
                     </group>
                     
                     <group>
-                        <group string="🌐 Información de Red">
+                        <group string="Información de Red">
                             <field name="ip_address" readonly="1"/>
                             <field name="session_id" readonly="1"/>
                         </group>
                         
-                        <group string="📊 Rendimiento">
+                        <group string="Rendimiento">
                             <field name="duration_ms" readonly="1" widget="integer"/>
                             <field name="user_agent" readonly="1"/>
                         </group>
                     </group>
                     
-                    <group string="📝 Notas" invisible="not notes">
+                    <group string="Notas" invisible="not notes">
                         <field name="notes" readonly="1" nolabel="1" colspan="2"/>
                     </group>
                 </sheet>
@@ -127,18 +119,10 @@
                 <field name="auth_date" string="Fecha" widget="datetime"/>
                 <field name="user_id" string="Usuario"/>
                 <field name="device_name" string="Dispositivo"/>
-                <field name="device_platform" widget="badge" string="Plataforma"
-                       decoration-info="device_platform == 'ios'"
-                       decoration-success="device_platform == 'android'"
-                       decoration-warning="device_platform == 'web'"/>
-                <field name="auth_type" widget="badge" string="Tipo"
-                       decoration-info="auth_type == 'facial_recognition'"
-                       decoration-success="auth_type == 'fingerprint'"/>
+                <field name="device_platform" widget="badge" string="Plataforma"/>
+                <field name="auth_type" widget="badge" string="Tipo"/>
                 <field name="success" widget="boolean" string="Éxito"/>
-                <field name="duration_ms" string="Duración (ms)" 
-                       decoration-success="duration_ms &lt; 1000"
-                       decoration-warning="duration_ms &gt;= 1000 and duration_ms &lt; 3000"
-                       decoration-danger="duration_ms &gt;= 3000"/>
+                <field name="duration_ms" string="Duración (ms)"/>
                 <field name="error_code" optional="hide" string="Código Error"/>
                 <field name="ip_address" optional="hide" string="IP"/>
             </list>
@@ -239,47 +223,35 @@
                 
                 <filter string="Mis Autenticaciones" 
                         name="my_auths"
-                        domain="[('user_id', '=', uid)]"
-                        icon="fa-user"/>
+                        domain="[('user_id', '=', uid)]"/>
                 
                 <filter string="Exitosas" 
                         name="successful"
-                        domain="[('success', '!=', False)]"
-                        icon="fa-check"/>
+                        domain="[('success', '=', True)]"/>
                 
                 <filter string="Fallidas" 
                         name="failed"
-                        domain="[('success', '=', False)]"
-                        icon="fa-times"/>
+                        domain="[('success', '=', False)]"/>
                 
                 <separator/>
                 
                 <filter string="Hoy" 
                         name="today"
-                        domain="[('auth_date', '&gt;=', context_today().strftime('%Y-%m-%d'))]"
-                        icon="fa-calendar"/>
+                        domain="[('auth_date', '&gt;=', datetime.datetime.combine(context_today(), datetime.time(0,0,0)).strftime('%Y-%m-%d %H:%M:%S'))]"/>
                 
                 <filter string="Esta Semana" 
                         name="this_week"
-                        domain="[('auth_date', '&gt;=', (context_today() - relativedelta(days=7)).strftime('%Y-%m-%d'))]"
-                        icon="fa-calendar-week"/>
-                
-                <filter string="Este Mes" 
-                        name="this_month"
-                        domain="[('auth_date', '&gt;=', context_today().strftime('%Y-%m-01'))]"
-                        icon="fa-calendar-alt"/>
+                        domain="[('auth_date', '&gt;=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
                 
                 <separator/>
                 
                 <filter string="iOS" 
                         name="ios"
-                        domain="[('device_platform', '=', 'ios')]"
-                        icon="fa-apple"/>
+                        domain="[('device_platform', '=', 'ios')]"/>
                 
                 <filter string="Android" 
                         name="android"
-                        domain="[('device_platform', '=', 'android')]"
-                        icon="fa-android"/>
+                        domain="[('device_platform', '=', 'android')]"/>
                 
                 <separator/>
                 
@@ -346,7 +318,7 @@
         <field name="name">Historial de Autenticaciones</field>
         <field name="res_model">biometric.auth.log</field>
         <field name="view_mode">list,kanban,form,graph,pivot</field>
-        <field name="context">{'search_default_my_auths': 1, 'search_default_this_week': 1}</field>
+        <field name="context">{'search_default_my_auths': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 No hay autenticaciones registradas
