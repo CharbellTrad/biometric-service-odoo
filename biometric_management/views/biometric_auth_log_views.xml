@@ -10,86 +10,29 @@
         <field name="arch" type="xml">
             <form string="Log de Autenticación" create="false" edit="false" delete="false">
                 <sheet>
-                    <widget name="web_ribbon" title="Exitoso" 
-                            bg_color="bg-success"
-                            invisible="not success"/>
-                    
-                    <widget name="web_ribbon" title="Fallido" 
-                            bg_color="bg-danger"
-                            invisible="success"/>
-                    
-                    <div class="oe_button_box" name="button_box">
-                        <button class="oe_stat_button" 
-                                icon="fa-check-circle" 
-                                type="object"
-                                invisible="not success">
-                            <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_text text-success">Exitoso</span>
-                            </div>
-                        </button>
-                        
-                        <button class="oe_stat_button" 
-                                icon="fa-times-circle" 
-                                type="object"
-                                invisible="success">
-                            <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_text text-danger">Fallido</span>
-                            </div>
-                        </button>
-                        
-                        <button class="oe_stat_button" 
-                                icon="fa-clock-o" 
-                                type="object">
-                            <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_value">
-                                    <field name="duration_ms"/>
-                                </span>
-                                <span class="o_stat_text">ms</span>
-                            </div>
-                        </button>
-                    </div>
-                    
-                    <div class="oe_title">
-                        <h1>Autenticación Biométrica</h1>
-                        <h3><field name="user_id" readonly="1"/></h3>
-                    </div>
-                    
                     <group>
-                        <group string="Usuario y Dispositivo">
+                        <group string="Información General">
                             <field name="user_id" readonly="1"/>
                             <field name="device_id" readonly="1"/>
                             <field name="device_name" readonly="1"/>
-                            <field name="device_platform" widget="badge" readonly="1"/>
+                            <field name="device_platform" readonly="1"/>
+                            <field name="auth_date" readonly="1"/>
+                            <field name="success" readonly="1"/>
+                            <field name="auth_type" readonly="1"/>
                         </group>
                         
-                        <group string="Autenticación">
-                            <field name="auth_date" readonly="1"/>
-                            <field name="auth_type" widget="badge" readonly="1"/>
-                            <field name="success" widget="boolean_toggle" readonly="1"/>
-                        </group>
-                    </group>
-                    
-                    <group invisible="success">
-                        <group string="Información de Error" colspan="2">
+                        <group string="Detalles">
                             <field name="error_code" readonly="1"/>
                             <field name="error_message" readonly="1"/>
-                        </group>
-                    </group>
-                    
-                    <group>
-                        <group string="Información de Red">
                             <field name="ip_address" readonly="1"/>
                             <field name="session_id" readonly="1"/>
-                        </group>
-                        
-                        <group string="Rendimiento">
                             <field name="duration_ms" readonly="1"/>
                             <field name="user_agent" readonly="1"/>
                         </group>
                     </group>
                     
-                    <group string="Notas" invisible="not notes">
-                        <field name="notes" readonly="1" nolabel="1" colspan="2"/>
+                    <group string="Notas">
+                        <field name="notes" readonly="1" nolabel="1"/>
                     </group>
                 </sheet>
             </form>
@@ -108,78 +51,17 @@
                   create="false" 
                   edit="false"
                   decoration-success="success == True"
-                  decoration-danger="success == False"
-                  default_order="auth_date desc">
+                  decoration-danger="success == False">
                 
-                <field name="auth_date" string="Fecha"/>
-                <field name="user_id" string="Usuario"/>
-                <field name="device_name" string="Dispositivo"/>
-                <field name="device_platform" widget="badge" string="Plataforma"/>
-                <field name="auth_type" widget="badge" string="Tipo"/>
-                <field name="success" string="Éxito"/>
-                <field name="duration_ms" string="Duración (ms)"/>
-                <field name="error_code" optional="hide" string="Código Error"/>
-                <field name="ip_address" optional="hide" string="IP"/>
-            </list>
-        </field>
-    </record>
-
-    <!-- ============================================ -->
-    <!-- VISTA KANBAN - Logs de Autenticación -->
-    <!-- ============================================ -->
-    
-    <record id="view_biometric_auth_log_kanban" model="ir.ui.view">
-        <field name="name">biometric.auth.log.kanban</field>
-        <field name="model">biometric.auth.log</field>
-        <field name="arch" type="xml">
-            <kanban quick_create="false" create="false">
-                <field name="id"/>
+                <field name="auth_date"/>
                 <field name="user_id"/>
                 <field name="device_name"/>
                 <field name="device_platform"/>
                 <field name="auth_type"/>
-                <field name="auth_date"/>
                 <field name="success"/>
                 <field name="duration_ms"/>
-                
-                <templates>
-                    <t t-name="kanban-box">
-                        <div class="oe_kanban_global_click">
-                            <div class="o_kanban_record_top mb-2">
-                                <div class="o_kanban_record_headings">
-                                    <strong class="o_kanban_record_title">
-                                        <field name="device_name"/>
-                                    </strong>
-                                </div>
-                                <t t-if="record.success.raw_value">
-                                    <span class="badge text-bg-success">Exitoso</span>
-                                </t>
-                                <t t-else="">
-                                    <span class="badge text-bg-danger">Fallido</span>
-                                </t>
-                            </div>
-                            
-                            <div class="o_kanban_record_body">
-                                <div class="mb-1">
-                                    <field name="user_id"/>
-                                </div>
-                                <div class="mb-1 text-muted">
-                                    <field name="auth_date"/>
-                                </div>
-                            </div>
-                            
-                            <div class="o_kanban_record_bottom mt-2">
-                                <div class="oe_kanban_bottom_left">
-                                    <field name="auth_type" widget="badge"/>
-                                </div>
-                                <div class="oe_kanban_bottom_right text-muted">
-                                    <t t-esc="record.duration_ms.value"/>ms
-                                </div>
-                            </div>
-                        </div>
-                    </t>
-                </templates>
-            </kanban>
+                <field name="error_code" optional="hide"/>
+            </list>
         </field>
     </record>
 
@@ -193,84 +75,32 @@
         <field name="arch" type="xml">
             <search string="Buscar Autenticaciones">
                 <field name="user_id"/>
-                <field name="device_id"/>
                 <field name="device_name"/>
                 
-                <filter string="Mis Autenticaciones" 
-                        name="my_auths"
-                        domain="[('user_id', '=', uid)]"/>
+                <filter string="Exitosas" name="successful" domain="[('success', '=', True)]"/>
+                <filter string="Fallidas" name="failed" domain="[('success', '=', False)]"/>
                 
-                <separator/>
-                
-                <filter string="Exitosas" 
-                        name="successful"
-                        domain="[('success', '=', True)]"/>
-                
-                <filter string="Fallidas" 
-                        name="failed"
-                        domain="[('success', '=', False)]"/>
-                
-                <separator/>
-                
-                <filter string="iOS" 
-                        name="ios"
-                        domain="[('device_platform', '=', 'ios')]"/>
-                
-                <filter string="Android" 
-                        name="android"
-                        domain="[('device_platform', '=', 'android')]"/>
-                
-                <separator/>
-                
-                <group expand="0" string="Agrupar Por">
-                    <filter string="Usuario" 
-                            name="group_user"
-                            context="{'group_by': 'user_id'}"/>
-                    <filter string="Dispositivo" 
-                            name="group_device"
-                            context="{'group_by': 'device_id'}"/>
-                    <filter string="Resultado" 
-                            name="group_success"
-                            context="{'group_by': 'success'}"/>
-                    <filter string="Tipo" 
-                            name="group_auth_type"
-                            context="{'group_by': 'auth_type'}"/>
-                    <filter string="Fecha" 
-                            name="group_date"
-                            context="{'group_by': 'auth_date:day'}"/>
+                <group string="Agrupar Por">
+                    <filter string="Usuario" name="group_user" context="{'group_by': 'user_id'}"/>
+                    <filter string="Dispositivo" name="group_device" context="{'group_by': 'device_id'}"/>
+                    <filter string="Fecha" name="group_date" context="{'group_by': 'auth_date:day'}"/>
                 </group>
             </search>
         </field>
     </record>
 
     <!-- ============================================ -->
-    <!-- VISTA GRÁFICA - Estadísticas -->
+    <!-- VISTA GRÁFICA -->
     <!-- ============================================ -->
     
     <record id="view_biometric_auth_log_graph" model="ir.ui.view">
         <field name="name">biometric.auth.log.graph</field>
         <field name="model">biometric.auth.log</field>
         <field name="arch" type="xml">
-            <graph string="Estadísticas de Autenticación" type="bar" stacked="True">
+            <graph string="Estadísticas" type="bar">
                 <field name="auth_date" type="row" interval="day"/>
                 <field name="success" type="col"/>
             </graph>
-        </field>
-    </record>
-
-    <!-- ============================================ -->
-    <!-- VISTA PIVOT - Análisis -->
-    <!-- ============================================ -->
-    
-    <record id="view_biometric_auth_log_pivot" model="ir.ui.view">
-        <field name="name">biometric.auth.log.pivot</field>
-        <field name="model">biometric.auth.log</field>
-        <field name="arch" type="xml">
-            <pivot string="Análisis de Autenticaciones">
-                <field name="user_id" type="row"/>
-                <field name="success" type="col"/>
-                <field name="auth_date" type="row" interval="day"/>
-            </pivot>
         </field>
     </record>
 
@@ -281,15 +111,10 @@
     <record id="action_biometric_auth_log" model="ir.actions.act_window">
         <field name="name">Historial de Autenticaciones</field>
         <field name="res_model">biometric.auth.log</field>
-        <field name="view_mode">list,kanban,form,graph,pivot</field>
-        <field name="context">{'search_default_my_auths': 1}</field>
+        <field name="view_mode">list,form,graph</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 No hay autenticaciones registradas
-            </p>
-            <p>
-                Las autenticaciones se registran automáticamente cuando los usuarios
-                inician sesión usando biometría desde la aplicación móvil.
             </p>
         </field>
     </record>
@@ -301,7 +126,7 @@
     <record id="action_biometric_auth_log_by_device" model="ir.actions.act_window">
         <field name="name">Autenticaciones del Dispositivo</field>
         <field name="res_model">biometric.auth.log</field>
-        <field name="view_mode">list,kanban,form,graph</field>
+        <field name="view_mode">list,form,graph</field>
         <field name="domain">[('device_id', '=', active_id)]</field>
         <field name="context">{'default_device_id': active_id}</field>
     </record>
