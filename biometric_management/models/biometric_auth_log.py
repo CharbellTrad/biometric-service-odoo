@@ -131,7 +131,7 @@ class BiometricAuthLog(models.Model):
     # ============================================
     
     @api.model
-    def log_authentication(self, device_id, success=True, error_info=None, session_id=None):
+    def log_authentication(self, device_id, success=True, error_info=None, session_id=None, duration_ms=None):
         """
         Registra un intento de autenticación
         
@@ -140,6 +140,7 @@ class BiometricAuthLog(models.Model):
             success (bool): Si fue exitoso
             error_info (dict): Información del error si falló
             session_id (str): ID de sesión si fue exitoso
+            duration_ms (int): Duración de la autenticación en milisegundos
             
         Returns:
             dict: Log creado
@@ -159,6 +160,10 @@ class BiometricAuthLog(models.Model):
                 'success': success,
                 'session_id': session_id,
             }
+            
+            # Agregar duración si se proporciona
+            if duration_ms is not None:
+                log_data['duration_ms'] = duration_ms
             
             # Agregar info de error si falló
             if not success and error_info:

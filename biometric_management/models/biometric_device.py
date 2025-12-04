@@ -580,5 +580,5 @@ class BiometricDevice(models.Model):
             'authCount': self.auth_count,
             'isRecentlyUsed': self.is_recently_used,
             'isStale': self.is_stale,
-            'daysSinceLastUse': self.days_since_last_use,
+            'daysSinceLastUse': max(0, self.days_since_last_use),  # Nunca negativo
         }
