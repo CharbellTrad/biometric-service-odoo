@@ -14,14 +14,14 @@
                             string="Activar" 
                             type="object" 
                             class="oe_highlight"
-                            attrs="{'invisible': [('state', '=', 'active')]}"/>
+                            invisible="state == 'active'"/>
                     
                     <button name="action_revoke" 
                             string="Revocar Acceso" 
                             type="object" 
                             class="oe_highlight"
                             confirm="¿Está seguro de revocar el acceso a este dispositivo?"
-                            attrs="{'invisible': [('state', '=', 'revoked')]}"/>
+                            invisible="state == 'revoked'"/>
                     
                     <field name="state" widget="statusbar" 
                            statusbar_visible="active,inactive,revoked"/>
@@ -41,7 +41,7 @@
                         <button class="oe_stat_button" 
                                 icon="fa-check-circle" 
                                 type="object"
-                                attrs="{'invisible': [('is_recently_used', '=', False)]}">
+                                invisible="not is_recently_used">
                             <div class="o_field_widget o_stat_info">
                                 <span class="o_stat_text text-success">Activo</span>
                                 <span class="o_stat_text">Últimas 24h</span>
@@ -51,7 +51,7 @@
                         <button class="oe_stat_button" 
                                 icon="fa-exclamation-triangle" 
                                 type="object"
-                                attrs="{'invisible': [('is_stale', '=', False)]}">
+                                invisible="not is_stale">
                             <div class="o_field_widget o_stat_info">
                                 <span class="o_stat_text text-warning">Inactivo</span>
                                 <span class="o_stat_text">&gt;30 días</span>
@@ -70,7 +70,7 @@
                     <!-- Título con icono según plataforma -->
                     <widget name="web_ribbon" title="Revocado" 
                             bg_color="bg-danger"
-                            attrs="{'invisible': [('state', '!=', 'revoked')]}"/>
+                            invisible="state != 'revoked'"/>
                     
                     <div class="oe_title">
                         <h1>
@@ -105,11 +105,11 @@
                             <field name="last_used_at" readonly="1"/>
                             <field name="last_auth_date" readonly="1"/>
                             <field name="days_since_last_use" readonly="1"
-                                   attrs="{'invisible': [('days_since_last_use', '&lt;', 0)]}"/>
+                                   invisible="days_since_last_use &lt; 0"/>
                         </group>
                         
                         <group string="Revocación" 
-                               attrs="{'invisible': [('state', '!=', 'revoked')]}">
+                               invisible="state != 'revoked'">
                             <field name="revoked_at" readonly="1"/>
                             <field name="revoked_by" readonly="1"/>
                         </group>
@@ -169,8 +169,8 @@
                        decoration-success="state == 'active'"
                        decoration-warning="state == 'inactive'"
                        decoration-danger="state == 'revoked'"/>
-                <field name="is_recently_used" invisible="1"/>
-                <field name="is_stale" invisible="1"/>
+                <field name="is_recently_used" column_invisible="1"/>
+                <field name="is_stale" column_invisible="1"/>
                 <field name="is_enabled" widget="boolean_toggle"/>
             </tree>
         </field>

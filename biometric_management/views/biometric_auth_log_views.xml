@@ -14,7 +14,7 @@
                         <button class="oe_stat_button" 
                                 icon="fa-check-circle" 
                                 type="object"
-                                attrs="{'invisible': [('success', '=', False)]}">
+                                invisible="not success">
                             <div class="o_field_widget o_stat_info">
                                 <span class="o_stat_text text-success">Exitoso</span>
                             </div>
@@ -23,7 +23,7 @@
                         <button class="oe_stat_button" 
                                 icon="fa-times-circle" 
                                 type="object"
-                                attrs="{'invisible': [('success', '=', True)]}">
+                                invisible="success">
                             <div class="o_field_widget o_stat_info">
                                 <span class="o_stat_text text-danger">Fallido</span>
                             </div>
@@ -45,7 +45,7 @@
                         </group>
                     </group>
                     
-                    <group attrs="{'invisible': [('success', '=', True)]}">
+                    <group invisible="success">
                         <group string="Información de Error">
                             <field name="error_code" readonly="1"/>
                             <field name="error_message" readonly="1"/>
@@ -64,7 +64,7 @@
                         </group>
                     </group>
                     
-                    <group string="Notas" attrs="{'invisible': [('notes', '=', False)]}">
+                    <group string="Notas" invisible="not notes">
                         <field name="notes" readonly="1" nolabel="1"/>
                     </group>
                 </sheet>
@@ -92,8 +92,7 @@
                 <field name="device_platform" widget="badge"/>
                 <field name="auth_type" widget="badge"/>
                 <field name="success" widget="boolean"/>
-                <field name="error_code" 
-                       attrs="{'invisible': [('success', '=', True)]}"/>
+                <field name="error_code" column_invisible="parent.success"/>
                 <field name="duration_ms" string="Duración (ms)" optional="hide"/>
                 <field name="ip_address" optional="hide"/>
             </tree>

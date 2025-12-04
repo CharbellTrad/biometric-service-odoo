@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, api, exceptions
+from odoo import models, fields, api
 from odoo.exceptions import ValidationError, UserError
 import logging
 import json
@@ -13,10 +13,17 @@ class BiometricDevice(models.Model):
     _description = 'Dispositivo Biométrico'
     _order = 'last_used_at desc, enrolled_at desc'
     _rec_name = 'device_name'
+    _inherit = ['mail.thread', 'mail.activity.mixin']  # Para el chatter
 
     # ============================================
     # CAMPOS BÁSICOS
     # ============================================
+    
+    active = fields.Boolean(
+        string='Activo',
+        default=True,
+        help='Si está desactivado, el registro se archivará'
+    )
     
     user_id = fields.Many2one(
         'res.users',
@@ -24,6 +31,7 @@ class BiometricDevice(models.Model):
         required=True,
         ondelete='cascade',
         index=True,
+        tracking=True,
         help='Usuario propietario del dispositivo'
     )
     
@@ -49,6 +57,7 @@ class BiometricDevice(models.Model):
     device_name = fields.Char(
         string='Nombre Dispositivo',
         required=True,
+        tracking=True,
         help='Nombre descriptivo del dispositivo'
     )
     
@@ -56,7 +65,7 @@ class BiometricDevice(models.Model):
         ('ios', 'iOS'),
         ('android', 'Android'),
         ('web', 'Web')
-    ], string='Plataforma', required=True, index=True)
+    ], string='Plataforma', required=True, index=True, tracking=True)
     
     os_version = fields.Char(
         string='Versión OS',
@@ -88,7 +97,7 @@ class BiometricDevice(models.Model):
         ('facial_recognition', 'Reconocimiento Facial'),
         ('iris', 'Reconocimiento de Iris'),
         ('unknown', 'Desconocido')
-    ], string='Tipo Biométrico', required=True, default='unknown')
+    ], string='Tipo Biométrico', required=True, default='unknown', tracking=True)
     
     biometric_type_display = fields.Char(
         string='Biometría',
@@ -112,11 +121,12 @@ class BiometricDevice(models.Model):
         ('active', 'Activo'),
         ('inactive', 'Inactivo'),
         ('revoked', 'Revocado')
-    ], string='Estado', default='active', required=True, index=True)
+    ], string='Estado', default='active', required=True, index=True, tracking=True)
     
     is_enabled = fields.Boolean(
         string='Habilitado',
         default=True,
+        tracking=True,
         help='Indica si el dispositivo está habilitado para autenticación'
     )
     
@@ -135,6 +145,7 @@ class BiometricDevice(models.Model):
     revoked_at = fields.Datetime(
         string='Fecha Revocación',
         readonly=True,
+        tracking=True,
         help='Fecha y hora de revocación del dispositivo'
     )
     
@@ -251,39 +262,45 @@ class BiometricDevice(models.Model):
             else:
                 record.is_stale = False
     
-    @api.depends('user_id')
+    @api.depends('device_id')
     def _compute_auth_stats(self):
         """Calcula estadísticas de autenticación"""
         for record in self:
-            auth_logs = self.env['biometric.auth.log'].search([
-                ('device_id', '=', record.id),
-                ('success', '=', True)
-            ])
-            record.auth_count = len(auth_logs)
-            record.last_auth_date = max(auth_logs.mapped('auth_date')) if auth_logs else False
+            if record.id:
+                auth_logs = self.env['biometric.auth.log'].search([
+                    ('device_id', '=', record.id),
+                    ('success', '=', True)
+                ])
+                record.auth_count = len(auth_logs)
+                record.last_auth_date = max(auth_logs.mapped('auth_date')) if auth_logs else False
+            else:
+                record.auth_count = 0
+                record.last_auth_date = False
     
     # ============================================
     # MÉTODOS CRUD
     # ============================================
     
-    @api.model
-    def create(self, vals):
-        """Validaciones al crear un dispositivo"""
-        # Validar que el usuario existe
-        if 'user_id' in vals:
-            user = self.env['res.users'].browse(vals['user_id'])
-            if not user.exists():
-                raise ValidationError('El usuario especificado no existe.')
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Validaciones al crear dispositivos"""
+        for vals in vals_list:
+            # Validar que el usuario existe
+            if 'user_id' in vals:
+                user = self.env['res.users'].browse(vals['user_id'])
+                if not user.exists():
+                    raise ValidationError('El usuario especificado no existe.')
         
-        # Crear dispositivo
-        device = super(BiometricDevice, self).create(vals)
+        # Crear dispositivos
+        devices = super(BiometricDevice, self).create(vals_list)
         
-        _logger.info(
-            f'Dispositivo biométrico creado: {device.device_name} '
-            f'para usuario {device.user_id.name}'
-        )
+        for device in devices:
+            _logger.info(
+                f'Dispositivo biométrico creado: {device.device_name} '
+                f'para usuario {device.user_id.name}'
+            )
         
-        return device
+        return devices
     
     def write(self, vals):
         """Validaciones al actualizar un dispositivo"""
@@ -296,10 +313,11 @@ class BiometricDevice(models.Model):
         result = super(BiometricDevice, self).write(vals)
         
         if 'state' in vals and vals['state'] == 'revoked':
-            _logger.info(
-                f'Dispositivo revocado: {self.device_name} '
-                f'por {self.env.user.name}'
-            )
+            for record in self:
+                _logger.info(
+                    f'Dispositivo revocado: {record.device_name} '
+                    f'por {self.env.user.name}'
+                )
         
         return result
     
