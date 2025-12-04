@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================ -->
+    <!-- VISTA FORMULARIO - Log de Autenticación -->
+    <!-- ============================================ -->
+    
+    <record id="view_biometric_auth_log_form" model="ir.ui.view">
+        <field name="name">biometric.auth.log.form</field>
+        <field name="model">biometric.auth.log</field>
+        <field name="arch" type="xml">
+            <form string="Log de Autenticación" create="false" edit="false" delete="false">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" 
+                                icon="fa-check-circle" 
+                                type="object"
+                                attrs="{'invisible': [('success', '=', False)]}">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text text-success">Exitoso</span>
+                            </div>
+                        </button>
+                        
+                        <button class="oe_stat_button" 
+                                icon="fa-times-circle" 
+                                type="object"
+                                attrs="{'invisible': [('success', '=', True)]}">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text text-danger">Fallido</span>
+                            </div>
+                        </button>
+                    </div>
+                    
+                    <group>
+                        <group string="Información General">
+                            <field name="user_id" readonly="1"/>
+                            <field name="device_id" readonly="1"/>
+                            <field name="auth_date" readonly="1"/>
+                            <field name="success" widget="boolean" readonly="1"/>
+                            <field name="auth_type" widget="badge" readonly="1"/>
+                        </group>
+                        
+                        <group string="Dispositivo">
+                            <field name="device_name" readonly="1"/>
+                            <field name="device_platform" widget="badge" readonly="1"/>
+                        </group>
+                    </group>
+                    
+                    <group attrs="{'invisible': [('success', '=', True)]}">
+                        <group string="Información de Error">
+                            <field name="error_code" readonly="1"/>
+                            <field name="error_message" readonly="1"/>
+                        </group>
+                    </group>
+                    
+                    <group>
+                        <group string="Información Técnica">
+                            <field name="session_id" readonly="1"/>
+                            <field name="ip_address" readonly="1"/>
+                            <field name="duration_ms" readonly="1" widget="integer"/>
+                        </group>
+                        
+                        <group string="Detalles Adicionales">
+                            <field name="user_agent" readonly="1"/>
+                        </group>
+                    </group>
+                    
+                    <group string="Notas" attrs="{'invisible': [('notes', '=', False)]}">
+                        <field name="notes" readonly="1" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============================================ -->
+    <!-- VISTA ÁRBOL - Logs de Autenticación -->
+    <!-- ============================================ -->
+    
+    <record id="view_biometric_auth_log_tree" model="ir.ui.view">
+        <field name="name">biometric.auth.log.tree</field>
+        <field name="model">biometric.auth.log</field>
+        <field name="arch" type="xml">
+            <tree string="Historial de Autenticaciones" 
+                  create="false" 
+                  edit="false"
+                  decoration-success="success == True"
+                  decoration-danger="success == False">
+                
+                <field name="auth_date"/>
+                <field name="user_id"/>
+                <field name="device_name"/>
+                <field name="device_platform" widget="badge"/>
+                <field name="auth_type" widget="badge"/>
+                <field name="success" widget="boolean"/>
+                <field name="error_code" 
+                       attrs="{'invisible': [('success', '=', True)]}"/>
+                <field name="duration_ms" string="Duración (ms)" optional="hide"/>
+                <field name="ip_address" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ============================================ -->
+    <!-- VISTA BÚSQUEDA - Logs de Autenticación -->
+    <!-- ============================================ -->
+    
+    <record id="view_biometric_auth_log_search" model="ir.ui.view">
+        <field name="name">biometric.auth.log.search</field>
+        <field name="model">biometric.auth.log</field>
+        <field name="arch" type="xml">
+            <search string="Buscar Autenticaciones">
+                <field name="user_id"/>
+                <field name="device_id"/>
+                <field name="device_name"/>
+                
+                <separator/>
+                
+                <filter string="Mis Autenticaciones" 
+                        name="my_auths"
+                        domain="[('user_id', '=', uid)]"/>
+                
+                <filter string="Exitosas" 
+                        name="successful"
+                        domain="[('success', '=', True)]"/>
+                
+                <filter string="Fallidas" 
+                        name="failed"
+                        domain="[('success', '=', False)]"/>
+                
+                <separator/>
+                
+                <filter string="Hoy" 
+                        name="today"
+                        domain="[('auth_date', '&gt;=', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
+                
+                <filter string="Esta Semana" 
+                        name="this_week"
+                        domain="[('auth_date', '&gt;=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                
+                <filter string="Este Mes" 
+                        name="this_month"
+                        domain="[('auth_date', '&gt;=', (context_today().replace(day=1)).strftime('%Y-%m-%d'))]"/>
+                
+                <separator/>
+                
+                <group expand="0" string="Agrupar Por">
+                    <filter string="Usuario" 
+                            name="group_user"
+                            context="{'group_by': 'user_id'}"/>
+                    <filter string="Dispositivo" 
+                            name="group_device"
+                            context="{'group_by': 'device_id'}"/>
+                    <filter string="Resultado" 
+                            name="group_success"
+                            context="{'group_by': 'success'}"/>
+                    <filter string="Tipo Autenticación" 
+                            name="group_auth_type"
+                            context="{'group_by': 'auth_type'}"/>
+                    <filter string="Fecha" 
+                            name="group_date"
+                            context="{'group_by': 'auth_date:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ============================================ -->
+    <!-- VISTA GRÁFICA - Estadísticas -->
+    <!-- ============================================ -->
+    
+    <record id="view_biometric_auth_log_graph" model="ir.ui.view">
+        <field name="name">biometric.auth.log.graph</field>
+        <field name="model">biometric.auth.log</field>
+        <field name="arch" type="xml">
+            <graph string="Estadísticas de Autenticación" type="bar" stacked="True">
+                <field name="auth_date" type="row" interval="day"/>
+                <field name="success" type="col"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- ============================================ -->
+    <!-- VISTA PIVOT - Análisis -->
+    <!-- ============================================ -->
+    
+    <record id="view_biometric_auth_log_pivot" model="ir.ui.view">
+        <field name="name">biometric.auth.log.pivot</field>
+        <field name="model">biometric.auth.log</field>
+        <field name="arch" type="xml">
+            <pivot string="Análisis de Autenticaciones">
+                <field name="user_id" type="row"/>
+                <field name="success" type="col"/>
+                <field name="auth_date" type="row" interval="day"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- ============================================ -->
+    <!-- ACCIÓN - Logs de Autenticación -->
+    <!-- ============================================ -->
+    
+    <record id="action_biometric_auth_log" model="ir.actions.act_window">
+        <field name="name">Historial de Autenticaciones</field>
+        <field name="res_model">biometric.auth.log</field>
+        <field name="view_mode">tree,form,graph,pivot</field>
+        <field name="context">{'search_default_my_auths': 1, 'search_default_this_week': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_empty_folder">
+                No hay autenticaciones registradas
+            </p>
+            <p>
+                Las autenticaciones se registran automáticamente cuando los usuarios
+                inician sesión usando biometría desde la aplicación móvil.
+            </p>
+        </field>
+    </record>
+
+    <!-- ============================================ -->
+    <!-- ACCIÓN - Logs por Dispositivo -->
+    <!-- ============================================ -->
+    
+    <record id="action_biometric_auth_log_by_device" model="ir.actions.act_window">
+        <field name="name">Autenticaciones del Dispositivo</field>
+        <field name="res_model">biometric.auth.log</field>
+        <field name="view_mode">tree,form,graph</field>
+        <field name="domain">[('device_id', '=', active_id)]</field>
+        <field name="context">{'default_device_id': active_id}</field>
+    </record>
+
+</odoo>

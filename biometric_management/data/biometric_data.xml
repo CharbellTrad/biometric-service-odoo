@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- ============================================ -->
+        <!-- PARÁMETROS DE CONFIGURACIÓN DEL SISTEMA -->
+        <!-- ============================================ -->
+        
+        <!-- Tiempo máximo de inactividad antes de considerar dispositivo "stale" -->
+        <record id="config_biometric_stale_days" model="ir.config_parameter">
+            <field name="key">biometric.device.stale.days</field>
+            <field name="value">30</field>
+        </record>
+        
+        <!-- Número máximo de dispositivos por usuario (0 = ilimitado) -->
+        <record id="config_biometric_max_devices" model="ir.config_parameter">
+            <field name="key">biometric.max.devices.per.user</field>
+            <field name="value">0</field>
+        </record>
+
+    </data>
+</odoo>

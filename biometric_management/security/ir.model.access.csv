@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_biometric_device_user,biometric.device.user,model_biometric_device,group_biometric_user,1,1,1,1
+access_biometric_device_manager,biometric.device.manager,model_biometric_device,group_biometric_manager,1,1,0,0
+access_biometric_device_admin,biometric.device.admin,model_biometric_device,group_biometric_admin,1,1,1,1
+access_biometric_auth_log_user,biometric.auth.log.user,model_biometric_auth_log,group_biometric_user,1,0,1,0
+access_biometric_auth_log_manager,biometric.auth.log.manager,model_biometric_auth_log,group_biometric_manager,1,1,0,0
+access_biometric_auth_log_admin,biometric.auth.log.admin,model_biometric_auth_log,group_biometric_admin,1,1,1,1

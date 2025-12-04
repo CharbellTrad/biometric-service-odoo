@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================ -->
+    <!-- CATEGORÍA DE SEGURIDAD -->
+    <!-- ============================================ -->
+    
+    <record id="module_category_biometric" model="ir.module.category">
+        <field name="name">Dispositivos Biométricos</field>
+        <field name="description">Gestión de autenticación biométrica</field>
+        <field name="sequence">50</field>
+    </record>
+
+    <!-- ============================================ -->
+    <!-- GRUPOS DE ACCESO -->
+    <!-- ============================================ -->
+    
+    <!-- Usuario: Puede ver y gestionar solo sus propios dispositivos -->
+    <record id="group_biometric_user" model="res.groups">
+        <field name="name">Usuario Biométrico</field>
+        <field name="category_id" ref="module_category_biometric"/>
+        <field name="comment">Puede gestionar sus propios dispositivos biométricos</field>
+    </record>
+    
+    <!-- Manager: Puede ver todos los dispositivos y gestionar los suyos -->
+    <record id="group_biometric_manager" model="res.groups">
+        <field name="name">Manager Biométrico</field>
+        <field name="category_id" ref="module_category_biometric"/>
+        <field name="implied_ids" eval="[(4, ref('group_biometric_user'))]"/>
+        <field name="comment">Puede ver todos los dispositivos y logs de autenticación</field>
+    </record>
+    
+    <!-- Admin: Control total -->
+    <record id="group_biometric_admin" model="res.groups">
+        <field name="name">Administrador Biométrico</field>
+        <field name="category_id" ref="module_category_biometric"/>
+        <field name="implied_ids" eval="[(4, ref('group_biometric_manager'))]"/>
+        <field name="comment">Control total sobre dispositivos y logs biométricos</field>
+    </record>
+
+    <!-- ============================================ -->
+    <!-- REGLAS DE ACCESO A REGISTROS (RLS) -->
+    <!-- ============================================ -->
+    
+    <!-- DISPOSITIVOS: Usuarios ven solo los suyos -->
+    <record id="biometric_device_user_rule" model="ir.rule">
+        <field name="name">Usuario: Solo sus dispositivos</field>
+        <field name="model_id" ref="model_biometric_device"/>
+        <field name="domain_force">[('user_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('group_biometric_user'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    
+    <!-- DISPOSITIVOS: Managers ven todos -->
+    <record id="biometric_device_manager_rule" model="ir.rule">
+        <field name="name">Manager: Todos los dispositivos</field>
+        <field name="model_id" ref="model_biometric_device"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_biometric_manager'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+    
+    <!-- DISPOSITIVOS: Admins control total -->
+    <record id="biometric_device_admin_rule" model="ir.rule">
+        <field name="name">Admin: Control total dispositivos</field>
+        <field name="model_id" ref="model_biometric_device"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_biometric_admin'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+    
+    <!-- LOGS: Usuarios ven solo los suyos -->
+    <record id="biometric_log_user_rule" model="ir.rule">
+        <field name="name">Usuario: Solo sus logs</field>
+        <field name="model_id" ref="model_biometric_auth_log"/>
+        <field name="domain_force">[('user_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('group_biometric_user'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+    
+    <!-- LOGS: Managers ven todos (solo lectura) -->
+    <record id="biometric_log_manager_rule" model="ir.rule">
+        <field name="name">Manager: Todos los logs</field>
+        <field name="model_id" ref="model_biometric_auth_log"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_biometric_manager'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+    
+    <!-- LOGS: Admins control total -->
+    <record id="biometric_log_admin_rule" model="ir.rule">
+        <field name="name">Admin: Control total logs</field>
+        <field name="model_id" ref="model_biometric_auth_log"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('group_biometric_admin'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+
+    <!-- ============================================ -->
+    <!-- ASIGNAR GRUPOS A USUARIOS INTERNOS -->
+    <!-- ============================================ -->
+    
+    <!-- Todos los usuarios internos son usuarios biométricos por defecto -->
+    <record id="base.group_user" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('group_biometric_user'))]"/>
+    </record>
+
+</odoo>

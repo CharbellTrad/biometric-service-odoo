@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================ -->
+    <!-- MENÚ PRINCIPAL - Biometric Management -->
+    <!-- ============================================ -->
+    
+    <menuitem id="menu_biometric_root"
+              name="Biometría"
+              sequence="60"
+              web_icon="biometric_management,static/description/icon.png"
+              groups="group_biometric_user"/>
+
+    <!-- ============================================ -->
+    <!-- SUBMENÚ - Dispositivos -->
+    <!-- ============================================ -->
+    
+    <menuitem id="menu_biometric_devices"
+              name="Dispositivos"
+              parent="menu_biometric_root"
+              sequence="10"/>
+    
+    <menuitem id="menu_biometric_device_list"
+              name="Mis Dispositivos"
+              parent="menu_biometric_devices"
+              action="action_biometric_device"
+              sequence="10"
+              groups="group_biometric_user"/>
+    
+    <menuitem id="menu_biometric_device_all"
+              name="Todos los Dispositivos"
+              parent="menu_biometric_devices"
+              action="action_biometric_device"
+              sequence="20"
+              groups="group_biometric_manager"/>
+
+    <!-- ============================================ -->
+    <!-- SUBMENÚ - Autenticaciones -->
+    <!-- ============================================ -->
+    
+    <menuitem id="menu_biometric_auth"
+              name="Autenticaciones"
+              parent="menu_biometric_root"
+              sequence="20"/>
+    
+    <menuitem id="menu_biometric_auth_log_my"
+              name="Mi Historial"
+              parent="menu_biometric_auth"
+              action="action_biometric_auth_log"
+              sequence="10"
+              groups="group_biometric_user"/>
+    
+    <menuitem id="menu_biometric_auth_log_all"
+              name="Historial Completo"
+              parent="menu_biometric_auth"
+              action="action_biometric_auth_log"
+              sequence="20"
+              groups="group_biometric_manager"/>
+
+    <!-- ============================================ -->
+    <!-- SUBMENÚ - Configuración (Solo Admins) -->
+    <!-- ============================================ -->
+    
+    <menuitem id="menu_biometric_config"
+              name="Configuración"
+              parent="menu_biometric_root"
+              sequence="90"
+              groups="group_biometric_admin"/>
+
+</odoo>
