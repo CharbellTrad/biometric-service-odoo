@@ -10,7 +10,6 @@
         <field name="arch" type="xml">
             <form string="Log de Autenticación" create="false" edit="false" delete="false">
                 <sheet>
-                    <!-- Ribbon de estado -->
                     <widget name="web_ribbon" title="Exitoso" 
                             bg_color="bg-success"
                             invisible="not success"/>
@@ -51,12 +50,8 @@
                     </div>
                     
                     <div class="oe_title">
-                        <h1>
-                            Autenticación Biométrica
-                        </h1>
-                        <h3>
-                            <field name="user_id" readonly="1"/>
-                        </h3>
+                        <h1>Autenticación Biométrica</h1>
+                        <h3><field name="user_id" readonly="1"/></h3>
                     </div>
                     
                     <group>
@@ -68,7 +63,7 @@
                         </group>
                         
                         <group string="Autenticación">
-                            <field name="auth_date" readonly="1" widget="datetime"/>
+                            <field name="auth_date" readonly="1"/>
                             <field name="auth_type" widget="badge" readonly="1"/>
                             <field name="success" widget="boolean_toggle" readonly="1"/>
                         </group>
@@ -88,7 +83,7 @@
                         </group>
                         
                         <group string="Rendimiento">
-                            <field name="duration_ms" readonly="1" widget="integer"/>
+                            <field name="duration_ms" readonly="1"/>
                             <field name="user_agent" readonly="1"/>
                         </group>
                     </group>
@@ -116,12 +111,12 @@
                   decoration-danger="success == False"
                   default_order="auth_date desc">
                 
-                <field name="auth_date" string="Fecha" widget="datetime"/>
+                <field name="auth_date" string="Fecha"/>
                 <field name="user_id" string="Usuario"/>
                 <field name="device_name" string="Dispositivo"/>
                 <field name="device_platform" widget="badge" string="Plataforma"/>
                 <field name="auth_type" widget="badge" string="Tipo"/>
-                <field name="success" widget="boolean" string="Éxito"/>
+                <field name="success" string="Éxito"/>
                 <field name="duration_ms" string="Duración (ms)"/>
                 <field name="error_code" optional="hide" string="Código Error"/>
                 <field name="ip_address" optional="hide" string="IP"/>
@@ -137,7 +132,7 @@
         <field name="name">biometric.auth.log.kanban</field>
         <field name="model">biometric.auth.log</field>
         <field name="arch" type="xml">
-            <kanban class="o_kanban_mobile" quick_create="false" create="false">
+            <kanban quick_create="false" create="false">
                 <field name="id"/>
                 <field name="user_id"/>
                 <field name="device_name"/>
@@ -146,7 +141,6 @@
                 <field name="auth_date"/>
                 <field name="success"/>
                 <field name="duration_ms"/>
-                <field name="error_code"/>
                 
                 <templates>
                     <t t-name="kanban-box">
@@ -154,38 +148,23 @@
                             <div class="o_kanban_record_top mb-2">
                                 <div class="o_kanban_record_headings">
                                     <strong class="o_kanban_record_title">
-                                        <t t-if="record.device_platform.raw_value == 'ios'">
-                                            <i class="fa fa-apple me-1"/>
-                                        </t>
-                                        <t t-if="record.device_platform.raw_value == 'android'">
-                                            <i class="fa fa-android me-1"/>
-                                        </t>
-                                        <t t-if="record.device_platform.raw_value == 'web'">
-                                            <i class="fa fa-globe me-1"/>
-                                        </t>
                                         <field name="device_name"/>
                                     </strong>
                                 </div>
                                 <t t-if="record.success.raw_value">
-                                    <span class="badge text-bg-success">
-                                        <i class="fa fa-check me-1"/>Exitoso
-                                    </span>
+                                    <span class="badge text-bg-success">Exitoso</span>
                                 </t>
                                 <t t-else="">
-                                    <span class="badge text-bg-danger">
-                                        <i class="fa fa-times me-1"/>Fallido
-                                    </span>
+                                    <span class="badge text-bg-danger">Fallido</span>
                                 </t>
                             </div>
                             
                             <div class="o_kanban_record_body">
                                 <div class="mb-1">
-                                    <i class="fa fa-user me-1"/>
                                     <field name="user_id"/>
                                 </div>
                                 <div class="mb-1 text-muted">
-                                    <i class="fa fa-calendar me-1"/>
-                                    <field name="auth_date" widget="datetime"/>
+                                    <field name="auth_date"/>
                                 </div>
                             </div>
                             
@@ -194,7 +173,6 @@
                                     <field name="auth_type" widget="badge"/>
                                 </div>
                                 <div class="oe_kanban_bottom_right text-muted">
-                                    <i class="fa fa-clock-o me-1"/>
                                     <t t-esc="record.duration_ms.value"/>ms
                                 </div>
                             </div>
@@ -214,16 +192,15 @@
         <field name="model">biometric.auth.log</field>
         <field name="arch" type="xml">
             <search string="Buscar Autenticaciones">
-                <field name="user_id" string="Usuario"/>
-                <field name="device_id" string="Dispositivo"/>
-                <field name="device_name" string="Nombre Dispositivo"/>
-                <field name="error_code" string="Código Error"/>
-                
-                <separator/>
+                <field name="user_id"/>
+                <field name="device_id"/>
+                <field name="device_name"/>
                 
                 <filter string="Mis Autenticaciones" 
                         name="my_auths"
                         domain="[('user_id', '=', uid)]"/>
+                
+                <separator/>
                 
                 <filter string="Exitosas" 
                         name="successful"
@@ -232,16 +209,6 @@
                 <filter string="Fallidas" 
                         name="failed"
                         domain="[('success', '=', False)]"/>
-                
-                <separator/>
-                
-                <filter string="Hoy" 
-                        name="today"
-                        domain="[('auth_date', '&gt;=', datetime.datetime.combine(context_today(), datetime.time(0,0,0)).strftime('%Y-%m-%d %H:%M:%S'))]"/>
-                
-                <filter string="Esta Semana" 
-                        name="this_week"
-                        domain="[('auth_date', '&gt;=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
                 
                 <separator/>
                 
@@ -265,15 +232,12 @@
                     <filter string="Resultado" 
                             name="group_success"
                             context="{'group_by': 'success'}"/>
-                    <filter string="Tipo Autenticación" 
+                    <filter string="Tipo" 
                             name="group_auth_type"
                             context="{'group_by': 'auth_type'}"/>
                     <filter string="Fecha" 
                             name="group_date"
                             context="{'group_by': 'auth_date:day'}"/>
-                    <filter string="Plataforma" 
-                            name="group_platform"
-                            context="{'group_by': 'device_platform'}"/>
                 </group>
             </search>
         </field>
