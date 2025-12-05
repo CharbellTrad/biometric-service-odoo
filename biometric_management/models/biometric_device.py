@@ -630,6 +630,10 @@ class BiometricDevice(models.Model):
             
             # 🆕 Estado de sesión
             'hasActiveSession': has_active_session,  # Si hay sesión activa en este dispositivo
+            
+            # 🆕 Detalles Adicionales
+            'device_info_json': self.device_info_json,
+            'notes': self.notes,
         }
     
     @api.model

@@ -279,6 +279,8 @@ class BiometricAuthLog(models.Model):
             'id': log.id,
             'device_name': log.device_name or 'Sin dispositivo',
             'device_platform': log.device_platform or 'unknown',
+            'device_name_direct': log.device_name_direct,
+            'device_platform_direct': log.device_platform_direct,
             'auth_date': format_datetime_venezuela(log.auth_date),
             'success': log.success,
             'auth_type': log.auth_type,
@@ -286,6 +288,11 @@ class BiometricAuthLog(models.Model):
             'session_ended_at': format_datetime_venezuela(log.session_ended_at),
             'error_code': log.error_code,
             'error_message': log.error_message,
+            'ip_address': log.ip_address,
+            'user_agent': log.user_agent,
+            'duration_ms': log.duration_ms,
+            'notes': log.notes,
+            'session_id': log.session_id,
         } for log in logs]
         
         return {
