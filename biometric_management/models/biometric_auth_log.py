@@ -26,8 +26,8 @@ class BiometricAuthLog(models.Model):
     device_id = fields.Many2one(
         'biometric.device',
         string='Dispositivo',
-        required=True,
-        ondelete='cascade',
+        required=False,  # Permitir auth sin dispositivo biométrico
+        ondelete='set null',
         index=True
     )
     
@@ -50,9 +50,25 @@ class BiometricAuthLog(models.Model):
     
     auth_type = fields.Selection([
         ('biometric', 'Biométrica'),
+        ('traditional', 'Tradicional'),
         ('fallback', 'Alternativa'),
         ('automatic', 'Automática')
     ], string='Tipo Autenticación', default='biometric', required=True)
+    
+    # ============================================
+    # TRACKING DE SESIÓN
+    # ============================================
+    
+    session_active = fields.Boolean(
+        string='Sesión Activa',
+        default=True,
+        help='Indica si la sesión de esta autenticación sigue activa'
+    )
+    
+    session_ended_at = fields.Datetime(
+        string='Sesión Finalizada',
+        help='Fecha/hora en que finalizó la sesión'
+    )
     
     # ============================================
     # INFORMACIÓN DEL INTENTO
@@ -106,17 +122,39 @@ class BiometricAuthLog(models.Model):
         compute='_compute_display_name'
     )
     
+    # Campos de dispositivo - pueden venir del device_id o ser directos
+    device_name_direct = fields.Char(
+        string='Nombre Dispositivo Directo',
+        help='Nombre del dispositivo cuando no hay device_id'
+    )
+    
+    device_platform_direct = fields.Char(
+        string='Plataforma Directa',
+        help='Plataforma cuando no hay device_id'
+    )
+    
     device_name = fields.Char(
-        related='device_id.device_name',
         string='Nombre Dispositivo',
+        compute='_compute_device_info',
         store=True
     )
     
-    device_platform = fields.Selection(
-        related='device_id.platform',
+    device_platform = fields.Char(
         string='Plataforma',
+        compute='_compute_device_info',
         store=True
     )
+    
+    @api.depends('device_id', 'device_id.device_name', 'device_id.platform', 'device_name_direct', 'device_platform_direct')
+    def _compute_device_info(self):
+        """Computa nombre y plataforma desde device_id o campos directos"""
+        for record in self:
+            if record.device_id:
+                record.device_name = record.device_id.device_name or 'Dispositivo'
+                record.device_platform = record.device_id.platform or 'unknown'
+            else:
+                record.device_name = record.device_name_direct or 'Sin dispositivo'
+                record.device_platform = record.device_platform_direct or 'unknown'
     
     @api.depends('user_id', 'auth_date', 'success')
     def _compute_display_name(self):
@@ -159,6 +197,9 @@ class BiometricAuthLog(models.Model):
                 'auth_date': fields.Datetime.now(),
                 'success': success,
                 'session_id': session_id,
+                # Persistencia de datos del dispositivo (para historial si se borra dispositivo)
+                'device_name_direct': device.device_name,
+                'device_platform_direct': device.platform,
             }
             
             # Agregar duración si se proporciona
@@ -172,8 +213,8 @@ class BiometricAuthLog(models.Model):
                     'error_message': error_info.get('message'),
                 })
             
-            # Crear log
-            log = self.create(log_data)
+            # Crear log (con sudo para evitar restricciones de acceso)
+            log = self.sudo().create(log_data)
             
             # Si fue exitoso, actualizar dispositivo
             if success:
@@ -198,34 +239,62 @@ class BiometricAuthLog(models.Model):
             }
     
     @api.model
-    def get_user_auth_history(self, user_id=None, limit=50):
+    def get_user_auth_history(self, user_id=None, limit=20, offset=0):
         """
-        Obtiene el historial de autenticaciones de un usuario
+        Obtiene el historial de autenticaciones de un usuario con paginación
         
         Args:
             user_id (int): ID del usuario (None = usuario actual)
-            limit (int): Límite de registros
+            limit (int): Límite de registros por página
+            offset (int): Desplazamiento para paginación
             
         Returns:
-            list: Historial formateado
+            dict: Historial formateado con información de paginación
         """
+        from datetime import timedelta
+        
         if user_id is None:
             user_id = self.env.user.id
         
-        logs = self.search([
-            ('user_id', '=', user_id)
-        ], order='auth_date desc', limit=limit)
+        domain = [('user_id', '=', user_id)]
         
-        return [{
+        # Obtener total para paginación
+        total_count = self.search_count(domain)
+        
+        # Obtener logs con paginación
+        logs = self.search(domain, order='auth_date desc', limit=limit, offset=offset)
+        
+        # Venezuela timezone offset (UTC-4)
+        tz_offset = timedelta(hours=-4)
+        
+        def format_datetime_venezuela(dt):
+            """Convierte datetime UTC a hora Venezuela"""
+            if not dt:
+                return None
+            # Restar 4 horas para Venezuela (UTC a UTC-4)
+            local_dt = dt + tz_offset
+            return local_dt.strftime('%Y-%m-%dT%H:%M:%S')
+        
+        records = [{
             'id': log.id,
-            'device_name': log.device_name,
-            'device_platform': log.device_platform,
-            'auth_date': log.auth_date.isoformat() if log.auth_date else None,
+            'device_name': log.device_name or 'Sin dispositivo',
+            'device_platform': log.device_platform or 'unknown',
+            'auth_date': format_datetime_venezuela(log.auth_date),
             'success': log.success,
             'auth_type': log.auth_type,
+            'session_active': log.session_active,
+            'session_ended_at': format_datetime_venezuela(log.session_ended_at),
             'error_code': log.error_code,
             'error_message': log.error_message,
         } for log in logs]
+        
+        return {
+            'records': records,
+            'total': total_count,
+            'limit': limit,
+            'offset': offset,
+            'has_more': (offset + limit) < total_count,
+        }
     
     @api.model
     def get_device_auth_stats(self, device_id):
@@ -251,3 +320,172 @@ class BiometricAuthLog(models.Model):
             'success_rate': (successful / total * 100) if total > 0 else 0,
             'last_auth': logs[0].auth_date.isoformat() if logs else None,
         }
+    
+    @api.model
+    def log_traditional_login(self, session_id=None, device_info=None):
+        """
+        Registra un login tradicional (usuario/contraseña)
+        
+        Args:
+            session_id (str): ID de sesión
+            device_info (dict): Información del dispositivo {device_name, platform}
+            
+        Returns:
+            dict: Resultado de la operación
+        """
+        try:
+            # Buscar dispositivo del usuario con coincidencia estricta
+            device = None
+            
+            # 1. Intentar buscar por UUID único si está disponible
+            if device_info and device_info.get('device_id'):
+                device = self.env['biometric.device'].search([
+                    ('user_id', '=', self.env.user.id),
+                    ('device_id', '=', device_info.get('device_id')),
+                    ('state', '=', 'active')
+                ], limit=1)
+            
+            # 2. Si no hay UUID o no se encontró, buscar por plataforma (evitar mezclar iOS/Android)
+            if not device and device_info and device_info.get('platform'):
+                device = self.env['biometric.device'].search([
+                    ('user_id', '=', self.env.user.id),
+                    ('platform', '=', device_info.get('platform')),
+                    ('state', '=', 'active')
+                ], limit=1)
+            
+            # 3. Si no hay info, buscar cualquier activo (comportamiento legacy)
+            if not device and not device_info:
+                 device = self.env['biometric.device'].search([
+                    ('user_id', '=', self.env.user.id),
+                    ('state', '=', 'active')
+                ], limit=1)
+            
+            log_data = {
+                'user_id': self.env.user.id,
+                'auth_date': fields.Datetime.now(),
+                'success': True,
+                'auth_type': 'traditional',
+                'session_id': session_id,
+                'session_active': True,
+            }
+            
+            if device:
+                log_data['device_id'] = device.id
+                # SIEMPRE guardar copia de los datos (para historial persistente)
+                log_data['device_name_direct'] = device.device_name
+                log_data['device_platform_direct'] = device.platform
+            else:
+                # Si no hay dispositivo biométrico coincidente, usar info directa
+                log_data['device_name_direct'] = device_info.get('device_name', 'Dispositivo') if device_info else 'Dispositivo'
+                log_data['device_platform_direct'] = device_info.get('platform', 'unknown') if device_info else 'unknown'
+            
+            # Crear log (con sudo para evitar restricciones de acceso)
+            log = self.sudo().create(log_data)
+            
+            _logger.info(f'Login tradicional registrado para {self.env.user.name}')
+            
+            return {
+                'success': True,
+                'log_id': log.id,
+                'message': 'Login registrado correctamente'
+            }
+            
+        except Exception as e:
+            _logger.error(f'Error registrando login tradicional: {str(e)}')
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    @api.model
+    def end_session(self, session_id=None, device_uuid=None):
+        """
+        Marca la sesión actual como finalizada
+        🔧 Usa sudo() para permitir que cualquier usuario cierre su propia sesión
+        
+        Args:
+            session_id (str): ID de sesión (opcional)
+            device_uuid (str): UUID del dispositivo para cerrar sesión específica (opcional)
+            
+        Returns:
+            dict: Resultado de la operación
+        """
+        try:
+            current_user_id = self.env.user.id
+            
+            # Buscar sesiones activas del usuario (con sudo para evitar restricciones de acceso)
+            domain = [
+                ('user_id', '=', current_user_id),
+                ('session_active', '=', True)
+            ]
+            
+            if session_id:
+                domain.append(('session_id', '=', session_id))
+            
+            # Si se proporciona device_uuid, filtrar por el dispositivo correspondiente
+            if device_uuid:
+                device = self.env['biometric.device'].search([
+                    ('device_id', '=', device_uuid),
+                    ('user_id', '=', current_user_id)
+                ], limit=1)
+                
+                if device:
+                    domain.append(('device_id', '=', device.id))
+                    _logger.info(f'Cerrando sesión específica para dispositivo {device.device_name}')
+            
+            # 🔧 Usar sudo() para la búsqueda y escritura
+            active_sessions = self.sudo().search(domain, order='auth_date desc')
+            
+            if active_sessions:
+                active_sessions.write({
+                    'session_active': False,
+                    'session_ended_at': fields.Datetime.now()
+                })
+                
+                _logger.info(f'Sesión(es) finalizada(s) para {self.env.user.name}: {len(active_sessions)} sesiones')
+                
+                return {
+                    'success': True,
+                    'sessions_ended': len(active_sessions),
+                    'message': 'Sesión(es) finalizada(s)'
+                }
+            
+            return {
+                'success': True,
+                'sessions_ended': 0,
+                'message': 'No había sesiones activas'
+            }
+            
+        except Exception as e:
+            _logger.error(f'Error finalizando sesión: {str(e)}')
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    @api.model
+    def get_active_sessions(self, user_id=None):
+        """
+        Obtiene las sesiones activas de un usuario
+        
+        Args:
+            user_id (int): ID del usuario (None = usuario actual)
+            
+        Returns:
+            list: Sesiones activas
+        """
+        if user_id is None:
+            user_id = self.env.user.id
+        
+        sessions = self.search([
+            ('user_id', '=', user_id),
+            ('session_active', '=', True),
+            ('success', '=', True)
+        ], order='auth_date desc')
+        
+        return [{
+            'id': s.id,
+            'device_name': s.device_name,
+            'auth_date': s.auth_date.isoformat() if s.auth_date else None,
+            'auth_type': s.auth_type,
+        } for s in sessions]

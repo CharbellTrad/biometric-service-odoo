@@ -177,14 +177,14 @@ class BiometricDevice(models.Model):
     auth_count = fields.Integer(
         string='Total Autenticaciones',
         compute='_compute_auth_stats',
-        store=True,
+        store=False,
         help='Número total de autenticaciones exitosas'
     )
     
     last_auth_date = fields.Datetime(
         string='Última Autenticación',
         compute='_compute_auth_stats',
-        store=True
+        store=False
     )
     
     days_since_last_use = fields.Integer(
@@ -450,6 +450,24 @@ class BiometricDevice(models.Model):
                 device = self.create(device_data)
                 _logger.info(f'Nuevo dispositivo registrado: {device.device_name}')
             
+            # 🔧 ADOPCIÓN DE SESIÓN:
+            # Si hay una sesión activa sin dispositivo (ej. el login tradicional que acaba de ocurrir),
+            # asignarla a este dispositivo recién creado para que aparezca "Activo" de inmediato.
+            try:
+                orphan_session = self.env['biometric.auth.log'].search([
+                    ('user_id', '=', self.env.user.id),
+                    ('session_active', '=', True),
+                    ('device_id', '=', False)
+                ], limit=1, order='auth_date desc')
+                
+                if orphan_session:
+                    # Validar que los datos directos coincidan con la plataforma si existen
+                    if not orphan_session.device_platform_direct or orphan_session.device_platform_direct == device.platform:
+                        orphan_session.sudo().write({'device_id': device.id})
+                        _logger.info(f'Sesión huérfana {orphan_session.id} asignada al dispositivo {device.device_name}')
+            except Exception as e:
+                _logger.warning(f'Error asignando sesión huérfana: {e}')
+            
             return device._format_device_data()
             
         except Exception as e:
@@ -524,18 +542,31 @@ class BiometricDevice(models.Model):
                 'message': 'Dispositivo válido'
             }
         else:
-            # Verificar si existe pero está revocado/inactivo
+            # Verificar si existe pero está revocado/inactivo/deshabilitado
             inactive_device = self.search([
                 ('user_id', '=', self.env.user.id),
                 ('device_id', '=', device_id)
             ], limit=1)
             
             if inactive_device:
-                _logger.warning(f'Dispositivo no válido (estado: {inactive_device.state}): {inactive_device.device_name}')
+                # Distinguir entre deshabilitado y revocado
+                if inactive_device.state == 'revoked':
+                    status_msg = 'revocado'
+                    can_reactivate = False
+                elif not inactive_device.is_enabled:
+                    status_msg = 'deshabilitado'
+                    can_reactivate = True
+                else:
+                    status_msg = inactive_device.state
+                    can_reactivate = inactive_device.state != 'revoked'
+                
+                _logger.warning(f'Dispositivo {status_msg}: {inactive_device.device_name}')
                 return {
                     'valid': False,
                     'device_odoo_id': inactive_device.id,
-                    'message': f'Dispositivo {inactive_device.state}. Acceso denegado.'
+                    'status': status_msg,
+                    'can_reactivate': can_reactivate,
+                    'message': f'Dispositivo {status_msg}. Acceso denegado.'
                 }
             else:
                 _logger.warning(f'Dispositivo no encontrado: {device_id}')
@@ -552,6 +583,21 @@ class BiometricDevice(models.Model):
         # Determinar si es el dispositivo actual (comparando device_id del contexto)
         current_device_id = self.env.context.get('current_device_id')
         is_current = (current_device_id == self.device_id) if current_device_id else False
+        
+        # Forzar recálculo de auth_count
+        auth_logs = self.env['biometric.auth.log'].search([
+            ('device_id', '=', self.id),
+            ('success', '=', True)
+        ])
+        auth_count = len(auth_logs)
+        
+        # 🆕 Verificar si hay sesiones activas en este dispositivo
+        active_sessions = self.env['biometric.auth.log'].search([
+            ('device_id', '=', self.id),
+            ('user_id', '=', self.user_id.id),
+            ('session_active', '=', True)
+        ], limit=1)
+        has_active_session = bool(active_sessions)
         
         return {
             # Campos básicos
@@ -577,8 +623,127 @@ class BiometricDevice(models.Model):
             'lastUsedAt': self.last_used_at.isoformat() if self.last_used_at else None,
             
             # Estadísticas
-            'authCount': self.auth_count,
+            'authCount': auth_count,  # Recalculado en tiempo real
             'isRecentlyUsed': self.is_recently_used,
             'isStale': self.is_stale,
             'daysSinceLastUse': max(0, self.days_since_last_use),  # Nunca negativo
+            
+            # 🆕 Estado de sesión
+            'hasActiveSession': has_active_session,  # Si hay sesión activa en este dispositivo
         }
+    
+    @api.model
+    def reactivate_device(self, device_id=None, **kwargs):
+        """
+        Reactiva un dispositivo previamente revocado o inactivo.
+        Evita crear duplicados al re-habilitar biometría.
+        
+        Args:
+            device_id (str): ID único del dispositivo
+            **kwargs: Argumentos adicionales desde JSON-RPC
+            
+        Returns:
+            dict: Resultado de la operación
+        """
+        if device_id is None:
+            device_id = kwargs.get('device_id')
+        
+        if not device_id:
+            return {
+                'success': False,
+                'error': 'device_id es requerido'
+            }
+        
+        try:
+            # Buscar dispositivo del usuario (incluyendo revocados)
+            device = self.search([
+                ('user_id', '=', self.env.user.id),
+                ('device_id', '=', device_id)
+            ], limit=1)
+            
+            if not device:
+                return {
+                    'success': False,
+                    'error': 'Dispositivo no encontrado',
+                    'should_register': True  # Indica que debe registrarse como nuevo
+                }
+            
+            # Reactivar el dispositivo
+            device.write({
+                'state': 'active',
+                'is_enabled': True,
+                'revoked_at': False,
+                'revoked_by': False,
+                'last_used_at': fields.Datetime.now()
+            })
+            
+            _logger.info(f'Dispositivo reactivado: {device.device_name} para {self.env.user.name}')
+            
+            return {
+                'success': True,
+                'device_odoo_id': device.id,
+                'device': device._format_device_data(),
+                'message': 'Dispositivo reactivado correctamente'
+            }
+            
+        except Exception as e:
+            _logger.error(f'Error reactivando dispositivo: {str(e)}')
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    @api.model
+    def get_or_create_device(self, device_data=None, **kwargs):
+        """
+        Obtiene un dispositivo existente o lo crea si no existe.
+        Si existe pero está revocado, lo reactiva.
+        
+        Args:
+            device_data (dict): Información del dispositivo
+            **kwargs: Datos adicionales
+            
+        Returns:
+            dict: Información del dispositivo
+        """
+        if device_data is None:
+            device_data = kwargs
+        
+        device_id = device_data.get('device_id')
+        
+        if not device_id:
+            return {
+                'success': False,
+                'error': 'device_id es requerido'
+            }
+        
+        try:
+            # Buscar dispositivo existente
+            existing = self.search([
+                ('user_id', '=', self.env.user.id),
+                ('device_id', '=', device_id)
+            ], limit=1)
+            
+            if existing:
+                if existing.state == 'revoked' or not existing.is_enabled:
+                    # Reactivar dispositivo existente
+                    return self.reactivate_device(device_id=device_id)
+                else:
+                    # Ya existe y está activo
+                    return {
+                        'success': True,
+                        'device_odoo_id': existing.id,
+                        'device': existing._format_device_data(),
+                        'already_exists': True,
+                        'message': 'Dispositivo ya registrado'
+                    }
+            else:
+                # Crear nuevo dispositivo
+                return self.register_device(device_data)
+                
+        except Exception as e:
+            _logger.error(f'Error en get_or_create_device: {str(e)}')
+            return {
+                'success': False,
+                'error': str(e)
+            }
