@@ -495,8 +495,7 @@ class BiometricDevice(models.Model):
             user_id = kwargs.get('user_id') or self.env.user.id
         
         devices = self.search([
-            ('user_id', '=', user_id),
-            ('state', '!=', 'revoked')
+            ('user_id', '=', user_id)
         ], order='last_used_at desc, enrolled_at desc')
         
         # Pasar current_device_id al contexto para identificar dispositivo actual

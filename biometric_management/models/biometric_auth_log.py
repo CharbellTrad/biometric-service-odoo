@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
+from odoo.http import root
+import requests
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -496,3 +498,321 @@ class BiometricAuthLog(models.Model):
             'auth_date': s.auth_date.isoformat() if s.auth_date else None,
             'auth_type': s.auth_type,
         } for s in sessions]
+    
+    @api.model
+    def destroy_session(self, session_id):
+        """
+        Destruye/finaliza una sesión específica usando el endpoint de Odoo
+        """
+        if not session_id:
+            return {
+                'success': False,
+                'message': 'Session ID es requerido'
+            }
+        
+        try:
+            # 1. Buscar el registro de autenticación
+            auth_log = self.sudo().search([
+                ('session_id', '=', session_id),
+                ('session_active', '=', True)
+            ], limit=1)
+            
+            if not auth_log:
+                return {
+                    'success': False,
+                    'message': 'Sesión no encontrada o ya está finalizada'
+                }
+            
+            # 2. Destruir la sesión usando el endpoint de Odoo
+            try:
+                # Obtener la base URL del servidor
+                base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+                destroy_url = f"{base_url}/web/session/destroy"
+                
+                # Hacer la petición con el session_id específico
+                response = requests.post(
+                    destroy_url,
+                    json={},
+                    headers={
+                        'Content-Type': 'application/json',
+                        'Cookie': f'session_id={session_id}'  # ← Enviar la sesión a destruir
+                    },
+                    timeout=5
+                )
+                
+                if response.status_code == 200:
+                    _logger.info(f"✅ Sesión {session_id} destruida vía endpoint")
+                else:
+                    _logger.warning(f"⚠️ Respuesta inesperada al destruir sesión: {response.status_code}")
+                    # Continuar de todos modos
+                    
+            except Exception as e:
+                _logger.error(f"❌ Error llamando endpoint destroy: {str(e)}")
+                # No fallar aquí, intentar el método alternativo
+            
+            # 3. Método alternativo: Acceder directamente al session store
+            try:
+                session_store = root.session_store
+                
+                # El session store tiene un método save/delete
+                # Intentar eliminar con diferentes formatos de clave
+                db_name = self.env.cr.dbname
+                
+                for sid_format in [
+                    session_id,
+                    f"{db_name}_{session_id}",
+                ]:
+                    try:
+                        session_store.delete(db_name, sid_format)
+                        _logger.info(f"✅ Sesión eliminada del store: {sid_format}")
+                        break
+                    except Exception as inner_e:
+                        _logger.debug(f"Formato {sid_format} no funcionó: {str(inner_e)}")
+                        continue
+                        
+            except Exception as e:
+                _logger.warning(f"⚠️ No se pudo eliminar del session store: {str(e)}")
+                # No es crítico si ya se destruyó vía endpoint
+            
+            # 4. Marcar el log como finalizado
+            auth_log.write({
+                'session_active': False,
+                'session_ended_at': fields.Datetime.now()
+            })
+            
+            _logger.info(f"✅ Sesión {session_id} marcada como finalizada")
+            
+            return {
+                'success': True,
+                'message': 'Sesión finalizada correctamente',
+                'session_id': session_id
+            }
+            
+        except Exception as e:
+            _logger.error(f"❌ Error al destruir sesión {session_id}: {str(e)}")
+            return {
+                'success': False,
+                'message': f'Error al finalizar la sesión: {str(e)}'
+            }
+        """
+        Destruye una sesión específica
+        """
+        if not session_id:
+            return {
+                'success': False,
+                'message': 'Session ID es requerido'
+            }
+        
+        try:
+            # 1. Buscar el registro de autenticación
+            auth_log = self.sudo().search([
+                ('session_id', '=', session_id),
+                ('session_active', '=', True)
+            ], limit=1)
+            
+            if not auth_log:
+                return {
+                    'success': False,
+                    'message': 'Sesión no encontrada o ya está finalizada'
+                }
+            
+            # 2. Destruir la sesión del session store
+            session_deleted = False
+            error_msg = None
+            
+            try:
+                session_store = root.session_store
+                db_name = self.env.cr.dbname
+                
+                # El método correcto es: session_store.delete(dbname, sid)
+                session_store.delete(db_name, session_id)
+                session_deleted = True
+                _logger.info(f"✅ Sesión {session_id} eliminada del session store")
+                
+            except AttributeError as e:
+                # Si session_store.delete no existe, intentar otra forma
+                _logger.warning(f"⚠️ Método delete no disponible: {str(e)}")
+                try:
+                    # Acceso directo al store (depende del tipo de store)
+                    store = root.session_store
+                    if hasattr(store, 'path'):  # FilesystemSessionStore
+                        import os
+                        session_file = os.path.join(store.path, db_name, session_id)
+                        if os.path.exists(session_file):
+                            os.remove(session_file)
+                            session_deleted = True
+                            _logger.info(f"✅ Archivo de sesión eliminado: {session_file}")
+                except Exception as inner_e:
+                    error_msg = str(inner_e)
+                    _logger.error(f"❌ Error eliminando archivo: {inner_e}")
+                    
+            except Exception as e:
+                error_msg = str(e)
+                _logger.error(f"❌ Error general eliminando sesión: {e}")
+            
+            # 3. Marcar el log como finalizado SIEMPRE
+            # (incluso si no se pudo eliminar del store, al menos marcamos el log)
+            auth_log.write({
+                'session_active': False,
+                'session_ended_at': fields.Datetime.now()
+            })
+            
+            _logger.info(f"✅ Auth log marcado como finalizado")
+            
+            # 4. Retornar resultado
+            if session_deleted:
+                return {
+                    'success': True,
+                    'message': 'Sesión finalizada correctamente'
+                }
+            else:
+                # Sesión marcada como finalizada pero puede seguir activa en el store
+                return {
+                    'success': True,
+                    'message': 'Sesión marcada como finalizada. Es posible que deba esperar a que expire.',
+                    'warning': error_msg
+                }
+            
+        except Exception as e:
+            _logger.error(f"❌ Error crítico: {str(e)}")
+            return {
+                'success': False,
+                'message': f'Error al finalizar la sesión: {str(e)}'
+            }
+        """
+        Destruye/finaliza una sesión específica
+        """
+        if not session_id:
+            return {
+                'success': False,
+                'message': 'Session ID es requerido'
+            }
+        
+        try:
+            # 1. Buscar el registro de autenticación
+            auth_log = self.sudo().search([
+                ('session_id', '=', session_id),
+                ('session_active', '=', True)
+            ], limit=1)
+            
+            if not auth_log:
+                return {
+                    'success': False,
+                    'message': 'Sesión no encontrada o ya está finalizada'
+                }
+            
+            # 2. Destruir la sesión del session store
+            session_deleted = False
+            try:
+                # Método 1: Usando el session_store directamente
+                session_store = root.session_store
+                
+                # Formato completo del SID en el store
+                sid_key = f"{self.env.cr.dbname}_{session_id}"
+                
+                # Intentar varios formatos de clave
+                for key_format in [session_id, sid_key, f"session:{session_id}"]:
+                    try:
+                        session_store.delete(key_format)
+                        _logger.info(f"✅ Sesión eliminada con clave: {key_format}")
+                        session_deleted = True
+                        break
+                    except:
+                        continue
+                
+                # Método 2: Si el anterior falla, invalidar manualmente
+                if not session_deleted:
+                    # Marcar como inválida en la tabla de sesiones
+                    self.env.cr.execute("""
+                        DELETE FROM ir_sessions 
+                        WHERE sid = %s
+                    """, (session_id,))
+                    
+                    if self.env.cr.rowcount > 0:
+                        session_deleted = True
+                        _logger.info(f"✅ Sesión {session_id} eliminada de ir_sessions")
+                    
+            except Exception as e:
+                _logger.error(f"❌ Error eliminando sesión: {str(e)}")
+                return {
+                    'success': False,
+                    'message': f'Error al eliminar la sesión: {str(e)}'
+                }
+            
+            # 3. Marcar el log como finalizado
+            auth_log.write({
+                'session_active': False,
+                'session_ended_at': fields.Datetime.now()
+            })
+            
+            _logger.info(f"✅ Sesión {session_id} destruida completamente")
+            
+            return {
+                'success': True,
+                'message': 'Sesión finalizada correctamente',
+                'session_deleted': session_deleted
+            }
+            
+        except Exception as e:
+            _logger.error(f"❌ Error: {str(e)}")
+            return {
+                'success': False,
+                'message': str(e)
+            }
+        """
+        Destruye/finaliza una sesión específica
+        
+        Args:
+            session_id (str): Session ID a destruir
+            
+        Returns:
+            dict: Resultado de la operación
+        """
+        if not session_id:
+            return {
+                'success': False,
+                'message': 'Session ID es requerido'
+            }
+        
+        try:
+            # 1. Buscar el registro de autenticación con esa sesión
+            auth_log = self.sudo().search([
+                ('session_id', '=', session_id),
+                ('session_active', '=', True)
+            ], limit=1)
+            
+            if not auth_log:
+                return {
+                    'success': False,
+                    'message': 'Sesión no encontrada o ya está finalizada'
+                }
+            
+            # 2. Marcar la sesión como finalizada
+            auth_log.write({
+                'session_active': False,
+                'session_ended_at': fields.Datetime.now()
+            })
+            
+            _logger.info(f"✅ Sesión {session_id} marcada como finalizada")
+            
+            # 3. Intentar destruir la sesión del session store de Odoo
+            try:
+                session_store = root.session_store
+                session_store.delete(self.env.cr.dbname, session_id)
+                _logger.info(f"✅ Sesión {session_id} eliminada del session store")
+            except Exception as e:
+                _logger.warning(f"⚠️ No se pudo eliminar del session store: {str(e)}")
+                # No es crítico, ya marcamos el log como finalizado
+            
+            return {
+                'success': True,
+                'message': 'Sesión finalizada correctamente',
+                'session_id': session_id
+            }
+            
+        except Exception as e:
+            _logger.error(f"❌ Error al destruir sesión {session_id}: {str(e)}")
+            return {
+                'success': False,
+                'message': f'Error al finalizar la sesión: {str(e)}'
+            }
